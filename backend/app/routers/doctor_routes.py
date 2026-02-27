@@ -1,36 +1,109 @@
+from datetime import datetime
+import uuid
+from boto3.dynamodb.conditions import Attr 
 from fastapi import APIRouter, Depends, HTTPException
-from app.models import ConsultationDetails, CarePlanResponse
-from app.services.auth import verify_cognito_token
+from app.models import ConsultationDetails, CarePlanResponse,DoctorProfileSetup
+from app.services.auth import require_role
 import boto3
 import os
 import json
+from datetime import datetime
+
 
 router = APIRouter(prefix="/api/doctor", tags=["Doctor"])
 
 # Initialize AWS Services
 dynamodb = boto3.resource('dynamodb', region_name=os.getenv("AWS_DEFAULT_REGION", "us-east-1"))
 care_plans_table = dynamodb.Table('DrDecideCarePlans')
+appointments_table = dynamodb.Table('DrDecideAppointments')
+notifications_table = dynamodb.Table('DrDecideNotifications')
+doctors_table = dynamodb.Table('DrDecideDoctors')
 
-# Initialize Bedrock Client for Claude 3
+# Initialize Bedrock (AI) and SNS (Text Messages) Clients
 bedrock_client = boto3.client('bedrock-runtime', region_name=os.getenv("AWS_DEFAULT_REGION", "us-east-1"))
+sns_client = boto3.client('sns', region_name=os.getenv("AWS_DEFAULT_REGION", "us-east-1"))
+
+@router.post("/setup-profile")
+async def setup_doctor_profile(
+    profile: DoctorProfileSetup,
+    current_user: dict = Depends(require_role("Doctor"))
+):
+    """
+    Called once when a new doctor logs in for the first time to add them to the directory.
+    """
+    # Grab their secure, permanent AWS ID and email
+    doctor_id = current_user.get('sub')
+    doctor_email = current_user.get('email') or current_user.get('cognito:username') or current_user.get('username')
+    
+    # Construct the record for the Directory Table
+    record = {
+        "doctor_id": doctor_id, 
+        "doctor_email": doctor_email,
+        "doctor_name": profile.doctor_name,
+        "specialty": profile.specialty,
+        "clinic_name": profile.clinic_name
+    }
+    
+    try:
+        doctors_table.put_item(Item=record)
+        return {"message": "Profile setup complete! You are now listed in the directory.", "profile": record}
+    except Exception as e:
+        print(f"DynamoDB Error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save doctor profile.")
+    
+
+@router.get("/my-appointments")
+async def get_doctor_appointments(
+    current_user: dict = Depends(require_role("Doctor"))
+):
+    """
+    Retrieves all appointments assigned to the logged-in doctor.
+    """
+    doctor_id = current_user.get('sub')
+    doctor_email = current_user.get('email') or current_user.get('cognito:username') or current_user.get('username')
+    
+    print(f"--- Fetching Schedule for Doctor ID: {doctor_id} ---")
+    
+    try:
+        response = appointments_table.scan(
+            FilterExpression=Attr('doctor_email').eq(doctor_email) | Attr('doctor_email').eq(doctor_id)
+        )
+        
+        appointments = response.get('Items', [])
+        appointments.sort(key=lambda x: x.get('appointment_date', ''))
+        
+        return {
+            "doctor_id": doctor_id,
+            "doctor_email": doctor_email,
+            "total_appointments": len(appointments),
+            "schedule": appointments
+        }
+        
+    except Exception as e:
+        print(f"DynamoDB Error: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error fetching schedule.")
+    
 
 @router.post("/consultation", response_model=CarePlanResponse)
 async def submit_consultation(
-    details: ConsultationDetails
-    # Auth is currently disabled for testing
-    # current_user: dict = Depends(verify_cognito_token) 
+    details: ConsultationDetails,
+    current_user: dict = Depends(require_role("Doctor")) 
 ):
     """
-    Doctor submits medical data. Translated by Claude 3. Saved to DynamoDB.
+    Doctor submits medical data. Translated by Claude 3. Saved to DB. SMS Sent.
     """
-    # Since Auth is turned off, we will hardcode a fake doctor email for DynamoDB
-    doctor_email = 'Dr.Test@example.com' 
-    print(f"Request processed for: {doctor_email}")
+    doctor_id = current_user.get('sub')
+    doctor_email = current_user.get('email') or current_user.get('cognito:username') or current_user.get('username')
+    
+    print(f"Consultation processed by Doctor ID: {doctor_id}")
 
     # 1. Prepare the prompt for Claude 3
     prompt = f"""
     You are an expert medical translator. Translate these doctor's notes into a simple, 
-    easy-to-understand daily care plan for the patient. Avoid complex medical jargon.
+    easy-to-understand daily care plan for the patient. 
+    
+    You MUST return the output strictly as a JSON object with four keys: "Morning", "Afternoon", "Evening", and "Night". 
+    Do not include any extra text outside the JSON. Keep the instructions brief (1-2 sentences max per time period).
     
     Diagnosis & Examination: {details.current_examination}
     Prescribed Medicines: {details.medicines_prescribed}
@@ -58,11 +131,12 @@ async def submit_consultation(
         print(f"Bedrock Error: {e}")
         ai_simplified_plan = "Error generating AI plan. Please follow the prescribed medicines."
 
-    # 3. Save the final record to DynamoDB
+    # 3. Save the final Care Plan record to DynamoDB
     record = {
         'patient_id': details.patient_id,
-        'appointment_id': details.appointment_id, # <-- Now grabbing this directly from your JSON body!
-        'doctor_email': doctor_email,
+        'appointment_id': details.appointment_id, 
+        'doctor_id': doctor_id,       
+        'doctor_email': doctor_email, 
         'raw_medical_history': details.medical_history,
         'raw_examination': details.current_examination,
         'medicines_prescribed': details.medicines_prescribed,
@@ -76,10 +150,145 @@ async def submit_consultation(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save care plan to database: {str(e)}")
 
-    # 4. Return the response to the frontend
+    # 4. CREATE IN-APP NOTIFICATION (For the Patient Dashboard)
+    notification_id = f"NOTIF-{uuid.uuid4().hex[:6].upper()}"
+    try:
+        notifications_table.put_item(Item={
+            'notification_id': notification_id,
+            'patient_id': details.patient_id,
+            'message': f"Care plan updated by {doctor_email}: New daily tasks added.",
+            'timestamp': datetime.utcnow().isoformat(),
+            'status': 'Unread'
+        })
+    except Exception as e:
+        print(f"Notification Save Error: {e}")
+
+    # 5. FIRE AMAZON SNS TEXT MESSAGE (Live SMS)
+    if hasattr(details, 'phone_number') and details.phone_number:
+        try:
+            sms_message = "Hi! Dr. Decide has finished your consultation. Check the app to view your simplified care instructions."
+            sns_client.publish(
+                PhoneNumber=details.phone_number,
+                Message=sms_message
+            )
+            print(f"SMS successfully sent to {details.phone_number}")
+        except Exception as e:
+            print(f"Amazon SNS Error: {e}")
+
+    # 6. Return the response to the frontend
     return CarePlanResponse(
         patient_id=details.patient_id,
         simplified_plan=ai_simplified_plan,
         follow_up_reminder=details.follow_up_details,
-        status="Success - Saved to Database"
+        status="Success - Saved to Database & SMS Sent!"
     )
+
+@router.get("/dashboard-stats")
+async def get_dashboard_stats(
+    current_user: dict = Depends(require_role("Doctor"))
+):
+    """
+    Aggregates all data needed for the Doctor Dashboard UI in a single API call.
+    """
+    doctor_id = current_user.get('sub')
+    doctor_email = current_user.get('email') or current_user.get('cognito:username') or current_user.get('username')
+    
+    today_str = datetime.utcnow().strftime("%Y-%m-%d")
+
+    try:
+        # 1. Fetch all appointments for this doctor
+        appts_response = appointments_table.scan(
+            FilterExpression=Attr('doctor_email').eq(doctor_email) | Attr('doctor_id').eq(doctor_id)
+        )
+        all_appts = appts_response.get('Items', [])
+        
+        # 2. Fetch all care plans generated by this doctor
+        plans_response = care_plans_table.scan(
+            FilterExpression=Attr('doctor_email').eq(doctor_email) | Attr('doctor_id').eq(doctor_id)
+        )
+        all_plans = plans_response.get('Items', [])
+
+        # --- CALCULATE METRICS ---
+        
+        # Filter for today's appointments
+        todays_appts = [a for a in all_appts if a.get('appointment_date', '').startswith(today_str)]
+        
+        # Get unique patients seen by this doctor
+        unique_patients = set(a.get('patient_id') for a in all_appts)
+        
+        # Mocking hourly capacity for the hackathon UI
+        hourly_capacity = [
+            {"time": "09:00 AM", "booked": 2, "limit": 3},
+            {"time": "10:30 AM", "booked": 3, "limit": 3},
+            {"time": "12:00 PM", "booked": 1, "limit": 2},
+            {"time": "03:15 PM", "booked": 0, "limit": 1}
+        ]
+
+        # Format today's list for the UI
+        formatted_todays_list = []
+        for appt in todays_appts:
+            formatted_todays_list.append({
+                "time": appt.get('appointment_date', '').split('T')[-1][:5] if 'T' in appt.get('appointment_date', '') else "TBD",
+                "patient_id": appt.get('patient_id', 'Unknown'),
+                "reason": appt.get('reason', 'General Follow-up') # Default if not provided
+            })
+
+        return {
+            "metrics": {
+                "total_patients": len(unique_patients),
+                "today_appointments_booked": len(todays_appts),
+                "today_appointments_limit": 20, # Hardcoded daily capacity
+                "care_plans_generated": len(all_plans),
+                "critical_alerts": 2 # Mocked for the UI
+            },
+            "todays_appointments": formatted_todays_list,
+            "hourly_capacity": hourly_capacity
+        }
+
+    except Exception as e:
+        print(f"Dashboard Aggregation Error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to load dashboard statistics.")
+
+
+@router.get("/my-patients")
+async def get_my_patients_and_plans(
+    current_user: dict = Depends(require_role("Doctor"))
+):
+    """
+    NEW FEATURE: Returns a list of all patients under this doctor's care, 
+    along with their most recent AI Care Plan.
+    """
+    doctor_id = current_user.get('sub')
+    doctor_email = current_user.get('email') or current_user.get('cognito:username') or current_user.get('username')
+    
+    try:
+        # Scan the care plans table for this doctor's patients
+        response = care_plans_table.scan(
+            FilterExpression=Attr('doctor_email').eq(doctor_email) | Attr('doctor_id').eq(doctor_id)
+        )
+        all_care_plans = response.get('Items', [])
+        
+        # Group by patient to only get their LATEST plan
+        patients_dict = {}
+        for plan in all_care_plans:
+            pid = plan.get('patient_id')
+            # If patient isn't in dict yet, or if this plan is newer (assuming chronological scanning/sorting)
+            patients_dict[pid] = {
+                "patient_id": pid,
+                "latest_appointment_id": plan.get('appointment_id'),
+                "latest_simplified_plan": plan.get('simplified_plan'),
+                "follow_up_reminder": plan.get('follow_up_reminder'),
+                "status": plan.get('status')
+            }
+            
+        # Convert dictionary back to a list for the frontend
+        patient_list = list(patients_dict.values())
+        
+        return {
+            "total_patients": len(patient_list),
+            "patients": patient_list
+        }
+
+    except Exception as e:
+        print(f"Patient Directory Error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve patient list.")

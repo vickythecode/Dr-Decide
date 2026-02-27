@@ -1,0 +1,22 @@
+# --- Environment Variables (CRITICAL) ---
+.env
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.venv/
+.env/
+
+# --- IDEs & Editors ---
+.vscode/
+.idea/
+.DS_Store
+
+# --- Postman ---
+# # In case you save exported collections in your repo
+# *.json
+# !Dr_Decide_Auth_Collection.json # (Optional: Keep this if you want to share the test file)
+

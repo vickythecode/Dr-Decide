@@ -6,6 +6,7 @@ class AppointmentRequest(BaseModel):
     patient_id: str
     doctor_id: str
     appointment_date: str
+    reason: Optional[str] = "General Consultation"  
 
 class QueueToken(BaseModel):
     patient_id: str
@@ -19,6 +20,7 @@ class ConsultationDetails(BaseModel):
     appointment_id: str
     phone_number: str
     medical_history: str
+    query: str = ""
     current_examination: str
     medicines_prescribed: str
     follow_up_details: str
@@ -36,3 +38,11 @@ class UserSignUp(BaseModel):
 class UserLogin(BaseModel):
     email: str
     password: str
+
+class TaskUpdate(BaseModel):
+    task_id: str
+    status: str
+class DoctorProfileSetup(BaseModel):
+    doctor_name: str
+    specialty: str
+    clinic_name: str

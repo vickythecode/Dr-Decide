@@ -1,0 +1,654 @@
+{
+  "info": {
+    "_postman_id": "a1c7593d-7663-44cf-8963-f2dfbf8932a4",
+    "name": "Dr. Decide - Full Hackathon Flow (Native Bearer Auth)",
+    "description": "Complete End-to-End API testing using Postman's native Bearer Token authentication.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Doctor Sign Up",
+          "id": "aa9d0c95-85ae-41a5-81a3-239ae4113e51",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"doctor@hospital.com\",\n  \"password\": \"Hackathon2026!\",\n  \"role\": \"Doctor\"\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/auth/signup",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "auth",
+                "signup"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Doctor Login (Copy IdToken!)",
+          "id": "e626f5b1-9e87-4c86-986c-bb6ad76135a9",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"doctor@hospital.com\",\n  \"password\": \"Hackathon2026!\"\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/auth/login",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Patient Sign Up",
+          "id": "5ea3f5e2-0d56-4bc6-b469-98a63ec463c0",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"patient@gmail.com\",\n  \"password\": \"Hackathon2026!\",\n  \"role\": \"Patient\"\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/auth/signup",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "auth",
+                "signup"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Patient Login (Copy IdToken!)",
+          "id": "7f89d067-ebeb-4468-9f7f-9e6c862e1d1a",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"patient@gmail.com\",\n  \"password\": \"Hackathon2026!\"\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/auth/login",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "id": "8a8d000a-f795-4a51-aa51-63b0c4abf17e"
+    },
+    {
+      "name": "2. Patient Flow",
+      "item": [
+        {
+          "name": "Search Doctors Directory",
+          "id": "25ee8216-b84a-4c39-89ca-e1dcc1b82902",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "PASTE_PATIENT_ID_TOKEN_HERE",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/patient/doctors?specialty=Cardiology",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "patient",
+                "doctors"
+              ],
+              "query": [
+                {
+                  "key": "specialty",
+                  "value": "Cardiology"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Book Appointment",
+          "id": "d2620850-bd11-47fc-9d6f-197b38aae0d5",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "PASTE_PATIENT_ID_TOKEN_HERE",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctor_id\": \"PASTE_DOCTOR_SUB_ID_HERE\",\n  \"appointment_date\": \"2026-03-01T10:00:00Z\",\n  \"reason\": \"Routine Cardiology Checkup\"\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/patient/book-appointment",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "patient",
+                "book-appointment"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "View My Appointments",
+          "id": "a9cd30f1-78a0-464f-ad23-592df5059497",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "PASTE_PATIENT_ID_TOKEN_HERE",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/patient/my-appointments",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "patient",
+                "my-appointments"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "View AI Care Plan",
+          "id": "892462a0-827a-45be-8b8e-374115fac12d",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "PASTE_PATIENT_ID_TOKEN_HERE",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/patient/my-plan",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "patient",
+                "my-plan"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Log Task as Done",
+          "id": "f47d2c3b-b6e5-45e3-9d8b-90a0f7c12eb8",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "PASTE_PATIENT_ID_TOKEN_HERE",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"task_id\": \"take_meds_morning\",\n  \"status\": \"Done\"\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/patient/log-task",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "patient",
+                "log-task"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "View My Notifications",
+          "id": "251ab2b4-5c62-497f-aacc-7e417c3d0d79",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "PASTE_PATIENT_ID_TOKEN_HERE",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/patient/notifications",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "patient",
+                "notifications"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "id": "0b733335-d450-4786-83a6-fe3004b8cf85"
+    },
+    {
+      "name": "3. Hospital Flow (No Auth Required for Kiosk/TV)",
+      "item": [
+        {
+          "name": "Kiosk Check-In (Generate Token)",
+          "id": "db0f5014-1d1c-4211-91e1-e0cf36d8b963",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/hospital/check-in/PASTE_PATIENT_SUB_ID_HERE?appointment_id=APT-123456",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "hospital",
+                "check-in",
+                "PASTE_PATIENT_SUB_ID_HERE"
+              ],
+              "query": [
+                {
+                  "key": "appointment_id",
+                  "value": "APT-123456"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Waiting Room TV (Queue Status)",
+          "id": "a13df4a1-8b90-4c23-84dc-063b51759474",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/hospital/queue-status",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "hospital",
+                "queue-status"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "id": "eaff6c6b-9e41-43e9-a4f1-d26729168e80"
+    },
+    {
+      "name": "4. Doctor Flow",
+      "item": [
+        {
+          "name": "Setup Doctor Profile (New Doctor)",
+          "id": "955bd6a7-1e30-4c69-a402-d703adc3dc33",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "PASTE_DOCTOR_ID_TOKEN_HERE",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctor_name\": \"Dr. Jane Smith\",\n  \"specialty\": \"Neurology\",\n  \"clinic_name\": \"Brain Health Clinic\"\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/doctor/setup-profile",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "doctor",
+                "setup-profile"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "View Dashboard Stats",
+          "id": "f72cb052-8b88-4dba-b15b-a362f88317bc",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "PASTE_DOCTOR_ID_TOKEN_HERE",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/doctor/dashboard-stats",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "doctor",
+                "dashboard-stats"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "View My Appointments",
+          "id": "20e9a8f6-4fb0-481d-8979-8de5220fc3ca",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "PASTE_DOCTOR_ID_TOKEN_HERE",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/doctor/my-appointments",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "doctor",
+                "my-appointments"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "View My Patients Directory",
+          "id": "6461f44f-52d5-4e9d-8007-6bb1a4a9d8bc",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "PASTE_DOCTOR_ID_TOKEN_HERE",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/doctor/my-patients",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "doctor",
+                "my-patients"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Submit Consultation (Claude 3 AI + SNS)",
+          "id": "0975309f-53f0-43b2-9027-14b4852baa3a",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "PASTE_DOCTOR_ID_TOKEN_HERE",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient_id\": \"PASTE_PATIENT_SUB_ID_HERE\",\n  \"appointment_id\": \"APT-123456\",\n  \"phone_number\": \"+919876543210\",\n  \"medical_history\": \"Hypertension. Mild seasonal allergies.\",\n  \"current_examination\": \"BP 145/90. Diagnosed with upper respiratory tract infection.\",\n  \"medicines_prescribed\": \"Azithromycin 250mg PO QD x 5 days.\",\n  \"follow_up_details\": \"Return to clinic if fever exceeds 101F.\"\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/doctor/consultation",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "doctor",
+                "consultation"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "id": "384e92cd-2978-485d-bf94-5ea7231e84e8"
+    }
+  ]
+}

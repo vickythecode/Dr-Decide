@@ -52,23 +52,8 @@ def login_user(email, password):
     except ClientError as e:
         return {"error": e.response['Error']['Message']}
 
-def require_role(required_role: str):
-    """
-    A dependency that checks if the logged-in user has the correct role.
-    """
-    def role_checker(claims: dict = Depends(verify_cognito_token)):
-        # Extract the custom role from the token claims
-        user_role = claims.get('custom:role')
-        
-        if user_role != required_role:
-            raise HTTPException(
-                status_code=403, 
-                detail=f"Access Denied. This action requires the '{required_role}' role. Your role: {user_role}"
-            )
-        return claims
-        
-    return role_checker
-# --- PART 2: TOKEN VERIFICATION (SECURITY) ---
+
+# --- PART 2: TOKEN VERIFICATION & RBAC ---
 
 keys = []
 if not USER_POOL_ID or not APP_CLIENT_ID:
@@ -97,38 +82,45 @@ def verify_cognito_token(credentials: HTTPAuthorizationCredentials = Security(se
     token = credentials.credentials
     
     try:
-        # Get the key ID from the token header
         headers = jwt.get_unverified_headers(token)
         kid = headers['kid']
 
-        # Find the matching public key from Cognito
-        key_index = -1
-        for i in range(len(keys)):
-            if kid == keys[i]['kid']:
-                key_index = i
-                break
-        
+        # Find the matching public key
+        key_index = next((i for i, k in enumerate(keys) if k['kid'] == kid), -1)
         if key_index == -1:
             raise HTTPException(status_code=401, detail="Public key not found in JWKS")
 
-        # Construct the public key
         public_key = jwk.construct(keys[key_index])
-
-        # Get the message and signature from the token
         message, encoded_signature = str(token).rsplit('.', 1)
         decoded_signature = base64url_decode(encoded_signature.encode('utf-8'))
 
-        # Verify the signature
         if not public_key.verify(message.encode("utf8"), decoded_signature):
             raise HTTPException(status_code=401, detail="Signature verification failed")
 
-        # Verify the claims (expiration, audience, etc.)
         claims = jwt.get_unverified_claims(token)
         
-        if claims['client_id'] != APP_CLIENT_ID:
+        # Check 'aud' for ID tokens or 'client_id' for Access tokens
+        verified_audience = claims.get('client_id') or claims.get('aud')
+        if verified_audience != APP_CLIENT_ID:
             raise HTTPException(status_code=401, detail="Token was not issued for this audience")
 
-        return claims # Token is valid! Returns the user's data
+        return claims
 
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Invalid authentication credentials: {str(e)}")
+
+def require_role(required_role: str):
+    """
+    A dependency that checks if the logged-in user has the correct role.
+    """
+    def role_checker(claims: dict = Depends(verify_cognito_token)):
+        user_role = claims.get('custom:role')
+        print(user_role)
+        if user_role != required_role:
+            raise HTTPException(
+                status_code=403, 
+                detail=f"Access Denied. This action requires the '{required_role}' role. Your role: {user_role}"
+            )
+        return claims
+        
+    return role_checker
