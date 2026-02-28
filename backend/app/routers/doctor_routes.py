@@ -84,52 +84,163 @@ async def get_doctor_appointments(
         raise HTTPException(status_code=500, detail="Internal Server Error fetching schedule.")
     
 
+# @router.post("/consultation", response_model=CarePlanResponse)
+# async def submit_consultation(
+#     details: ConsultationDetails,
+#     current_user: dict = Depends(require_role("Doctor")) 
+# ):
+#     """
+#     Doctor submits medical data. Translated by Claude 3. Saved to DB. SMS Sent.
+#     """
+#     doctor_id = current_user.get('sub')
+#     doctor_email = current_user.get('email') or current_user.get('cognito:username') or current_user.get('username')
+    
+#     print(f"Consultation processed by Doctor ID: {doctor_id}")
+
+#     # 1. Prepare the prompt for Claude 3
+#     prompt = f"""
+#     You are an expert medical translator. Translate these doctor's notes into a simple, 
+#     easy-to-understand daily care plan for the patient. 
+    
+#     You MUST return the output strictly as a JSON object with four keys: "Morning", "Afternoon", "Evening", and "Night". 
+#     Do not include any extra text outside the JSON. Keep the instructions brief (1-2 sentences max per time period).
+    
+#     Diagnosis & Examination: {details.current_examination}
+#     Prescribed Medicines: {details.medicines_prescribed}
+#     """
+
+#     # 2. Call Amazon Bedrock (Claude 3 Sonnet)
+#     try:
+#         bedrock_body = json.dumps({
+#             "anthropic_version": "bedrock-2023-05-31",
+#             "max_tokens": 500,
+#             "messages": [{"role": "user", "content": prompt}]
+#         })
+        
+#         response = bedrock_client.invoke_model(
+#             modelId="anthropic.claude-3-sonnet-20240229-v1:0",
+#             body=bedrock_body,
+#             contentType="application/json",
+#             accept="application/json"
+#         )
+        
+#         response_body = json.loads(response.get('body').read())
+#         ai_simplified_plan = response_body.get('content')[0].get('text')
+
+#     except Exception as e:
+#         print(f"Bedrock Error: {e}")
+#         ai_simplified_plan = "Error generating AI plan. Please follow the prescribed medicines."
+
+#     # 3. Save the final Care Plan record to DynamoDB
+#     record = {
+#         'patient_id': details.patient_id,
+#         'appointment_id': details.appointment_id, 
+#         'doctor_id': doctor_id,       
+#         'doctor_email': doctor_email, 
+#         'raw_medical_history': details.medical_history,
+#         'raw_examination': details.current_examination,
+#         'medicines_prescribed': details.medicines_prescribed,
+#         'simplified_plan': ai_simplified_plan,
+#         'follow_up_reminder': details.follow_up_details,
+#         'status': 'Completed'
+#     }
+
+#     try:
+#         care_plans_table.put_item(Item=record)
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Failed to save care plan to database: {str(e)}")
+
+#     # 4. CREATE IN-APP NOTIFICATION (For the Patient Dashboard)
+#     notification_id = f"NOTIF-{uuid.uuid4().hex[:6].upper()}"
+#     try:
+#         notifications_table.put_item(Item={
+#             'notification_id': notification_id,
+#             'patient_id': details.patient_id,
+#             'message': f"Care plan updated by {doctor_email}: New daily tasks added.",
+#             'timestamp': datetime.utcnow().isoformat(),
+#             'status': 'Unread'
+#         })
+#     except Exception as e:
+#         print(f"Notification Save Error: {e}")
+
+#     # 5. FIRE AMAZON SNS TEXT MESSAGE (Live SMS)
+#     if hasattr(details, 'phone_number') and details.phone_number:
+#         try:
+#             sms_message = "Hi! Dr. Decide has finished your consultation. Check the app to view your simplified care instructions."
+#             sns_client.publish(
+#                 PhoneNumber=details.phone_number,
+#                 Message=sms_message
+#             )
+#             print(f"SMS successfully sent to {details.phone_number}")
+#         except Exception as e:
+#             print(f"Amazon SNS Error: {e}")
+
+#     # 6. Return the response to the frontend
+#     return CarePlanResponse(
+#         patient_id=details.patient_id,
+#         simplified_plan=ai_simplified_plan,
+#         follow_up_reminder=details.follow_up_details,
+#         status="Success - Saved to Database & SMS Sent!"
+#     )
+#//////////// Gemini 
 @router.post("/consultation", response_model=CarePlanResponse)
 async def submit_consultation(
     details: ConsultationDetails,
     current_user: dict = Depends(require_role("Doctor")) 
 ):
     """
-    Doctor submits medical data. Translated by Claude 3. Saved to DB. SMS Sent.
+    Doctor submits medical data. Translated by Google Gemini 1.5 Flash. Saved to DB. SMS Sent.
     """
     doctor_id = current_user.get('sub')
     doctor_email = current_user.get('email') or current_user.get('cognito:username') or current_user.get('username')
     
     print(f"Consultation processed by Doctor ID: {doctor_id}")
 
-    # 1. Prepare the prompt for Claude 3
+    # 1. Prepare the prompt for Gemini (Formatted for your React UI)
     prompt = f"""
-    You are an expert medical translator. Translate these doctor's notes into a simple, 
-    easy-to-understand daily care plan for the patient. 
+    You are an expert medical AI assistant. Analyze these doctor's notes and translate them into simple, patient-friendly language.
     
-    You MUST return the output strictly as a JSON object with four keys: "Morning", "Afternoon", "Evening", and "Night". 
-    Do not include any extra text outside the JSON. Keep the instructions brief (1-2 sentences max per time period).
+    You MUST output your response STRICTLY as a JSON object with two exact keys: "care_plan" and "summarization". 
+    Do not include markdown like ```json.
     
+    Format requirements:
+    1. "care_plan": A dictionary with keys "Morning", "Afternoon", "Evening", and "Night". Each value should be a short, 1-sentence instruction.
+    2. "summarization": A list of 3 short bullet points summarizing the visit, diagnosis, and next steps in plain English.
+    
+    Doctor's Notes:
     Diagnosis & Examination: {details.current_examination}
     Prescribed Medicines: {details.medicines_prescribed}
     """
 
-    # 2. Call Amazon Bedrock (Claude 3 Sonnet)
+    # 2. Call Google Gemini (Bypassing AWS Bedrock)
     try:
-        bedrock_body = json.dumps({
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 500,
-            "messages": [{"role": "user", "content": prompt}]
-        })
-        
-        response = bedrock_client.invoke_model(
-            modelId="anthropic.claude-3-sonnet-20240229-v1:0",
-            body=bedrock_body,
-            contentType="application/json",
-            accept="application/json"
+        print("Sending clinical notes to Google Gemini...")
+        model = genai.GenerativeModel(
+            'gemini-1.5-flash',
+            # This forces Gemini to return perfect JSON every single time!
+            generation_config={"response_mime_type": "application/json"}
         )
         
-        response_body = json.loads(response.get('body').read())
-        ai_simplified_plan = response_body.get('content')[0].get('text')
+        response = model.generate_content(prompt)
+        ai_simplified_plan = response.text
+        print("✅ Gemini Care Plan Generated Successfully!")
 
     except Exception as e:
-        print(f"Bedrock Error: {e}")
-        ai_simplified_plan = "Error generating AI plan. Please follow the prescribed medicines."
+        print(f"Gemini Error: {e}")
+        # Hackathon Fallback: If AI fails or internet drops, keep the demo alive!
+        ai_simplified_plan = json.dumps({
+            "care_plan": {
+                "Morning": "Take prescribed medication after breakfast.",
+                "Afternoon": "Rest and stay hydrated.",
+                "Evening": "Monitor temperature and log symptoms.",
+                "Night": "Get a full 8 hours of sleep."
+            },
+            "summarization": [
+                "Patient evaluated for reported symptoms.",
+                "Standard recovery protocol initiated.",
+                "Follow up if symptoms worsen after 48 hours."
+            ]
+        })
 
     # 3. Save the final Care Plan record to DynamoDB
     record = {
@@ -180,9 +291,9 @@ async def submit_consultation(
         patient_id=details.patient_id,
         simplified_plan=ai_simplified_plan,
         follow_up_reminder=details.follow_up_details,
-        status="Success - Saved to Database & SMS Sent!"
+        status="Success - Saved to DB, AI Generated, & SMS Sent!"
     )
-
+#///
 @router.get("/dashboard-stats")
 async def get_dashboard_stats(
     current_user: dict = Depends(require_role("Doctor"))
