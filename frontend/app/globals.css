@@ -1,0 +1,238 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #edf4f6;
+  --panel: #ffffff;
+  --text: #234145;
+  --muted: #698487;
+  --border: #d9e6ea;
+  --teal: #148f88;
+  --teal-dark: #0f6963;
+  --blue-soft: #e8f5f8;
+  --danger: #d75a52;
+  --shadow: 0 10px 30px rgba(26, 71, 74, 0.08);
+}
+
+@theme inline {
+  --font-sans: var(--font-manrope);
+  --font-mono: var(--font-space-grotesk);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(circle at 10% -10%, #d7efed 0%, var(--bg) 48%), var(--bg);
+  color: var(--text);
+  font-family: var(--font-manrope), sans-serif;
+}
+
+.auth-bg {
+  background:
+    radial-gradient(circle at 15% -10%, rgba(20, 143, 136, 0.22), transparent 45%),
+    radial-gradient(circle at 90% 0%, rgba(24, 114, 170, 0.16), transparent 35%),
+    var(--bg);
+}
+
+.title {
+  font-family: var(--font-space-grotesk), sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.section-title {
+  font-family: var(--font-space-grotesk), sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.home-hero {
+  background:
+    linear-gradient(140deg, rgba(255, 255, 255, 0.95), rgba(243, 252, 251, 0.92)),
+    var(--panel);
+}
+
+.auth-role-card {
+  display: block;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fcfc 100%);
+  padding: 14px 16px;
+  text-decoration: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.auth-role-card:hover {
+  transform: translateY(-1px);
+  border-color: #b4d9de;
+  box-shadow: 0 10px 24px rgba(16, 93, 102, 0.1);
+}
+
+.input {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+.input:focus {
+  outline: 2px solid #9fd8d2;
+  border-color: var(--teal);
+}
+
+.btn {
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 700;
+  transition: 0.2s ease;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--teal) 0%, var(--teal-dark) 100%);
+  color: #fff;
+}
+
+.btn-secondary {
+  background: #fff;
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+
+.tab {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--muted);
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tab-active {
+  background: var(--teal);
+  color: #fff;
+  border-color: var(--teal);
+}
+
+.side-link {
+  display: block;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  padding: 9px 10px;
+  font-size: 14px;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.side-link:hover {
+  background: var(--blue-soft);
+  color: var(--text);
+}
+
+.side-link-active {
+  background: linear-gradient(135deg, var(--teal) 0%, var(--teal-dark) 100%);
+  color: #fff;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table th,
+.table td {
+  border: 1px solid var(--border);
+  text-align: left;
+  padding: 8px 10px;
+  vertical-align: top;
+  background: #fff;
+}
+
+.table th {
+  background: #f2f8fa;
+  color: #185c60;
+  font-weight: 700;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.pill {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: #fff;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.kpi-value {
+  margin: 4px 0 0;
+  font-family: var(--font-space-grotesk), sans-serif;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--teal-dark);
+}
+
+.toast {
+  min-width: 240px;
+  max-width: 340px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #fff;
+  padding: 10px 12px;
+  box-shadow: var(--shadow);
+  font-size: 13px;
+}
+
+.toast-success {
+  border-color: #89d8be;
+}
+
+.toast-error {
+  border-color: #f3a9a4;
+}
+
+.toast-info {
+  border-color: #a2d5e8;
+}
+
+.log {
+  margin: 0;
+  border-radius: 12px;
+  border: 1px solid #2c5f5f;
+  background: #153637;
+  color: #d2fffb;
+  padding: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  max-height: 260px;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
