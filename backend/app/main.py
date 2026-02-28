@@ -1,8 +1,8 @@
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
 from app.routers import doctor_routes, patient_routes,hospital_routes,auth_routes
-
+load_dotenv()
 # This is your main FastAPI Gateway
 app = FastAPI(title="Dr. Decide API Gateway")
 
