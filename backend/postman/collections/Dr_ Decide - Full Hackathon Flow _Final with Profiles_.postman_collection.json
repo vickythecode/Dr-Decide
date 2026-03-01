@@ -280,7 +280,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "PASTE_PATIENT_ID_TOKEN_HERE",
+                  "value": "eyJraWQiOiJXSDJRUkRyWUgyVDlqQk1HWmdVSnRSeHpWajg0WHpWUEhrb0UzQnpqdjhrPSIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiI4NGE4ZjRhOC1hMGExLTcwNjQtYzJlNS1lMWY5Yjg5NzhiZjciLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC51cy1lYXN0LTEuYW1hem9uYXdzLmNvbVwvdXMtZWFzdC0xX2ZndloxVERCSyIsImNvZ25pdG86dXNlcm5hbWUiOiI4NGE4ZjRhOC1hMGExLTcwNjQtYzJlNS1lMWY5Yjg5NzhiZjciLCJvcmlnaW5fanRpIjoiMWFhNTVmNjAtM2M2MS00ZTY3LWE0OWQtMGE0ZDM1Zjk2OGJlIiwiYXVkIjoiNmN2dDBtaWExMTZtOGdqOWJiNGc1YmYxdWwiLCJldmVudF9pZCI6ImFhYzE5M2NjLWMyMWItNDZhNi04NjQyLTdiMDJlZDU5OWM2MSIsInRva2VuX3VzZSI6ImlkIiwiYXV0aF90aW1lIjoxNzcyMzYxNDQyLCJleHAiOjE3NzIzNjUwNDIsImN1c3RvbTpyb2xlIjoiUGF0aWVudCIsImlhdCI6MTc3MjM2MTQ0MiwianRpIjoiNzVjM2YwMjktMzgwZi00ZGQ2LWI4MGMtYTY2NTk0NjRlNTFjIiwiZW1haWwiOiJwYXRpZW50QGdtYWlsLmNvbSJ9.k7u-tIKgP-1e-1Mn4XwjMHBfab1Nib4e9x_AlZM1A8PRtdwU1kTbhmmFnqXnUwI58Xmh5vBW3-OdrivwxSDHhIukt3mXhBOkuxZRGWx9CP1iPHx6cLi_qjPd6b6f57aZxMl_YKcU7gAEmt-QUXdJd5F-IlYrvfPbpkgEy76k1hfI62B4lt4j00tGpRpeu9tKMMVY4qJ3eER9O-NnjDE73690JOlG0MZmj3p503c5ErRAPZX0WpBiTAdVniODPLhCDntwqvAQ5c7qbEwdeAKLwwpU4vk7aK-MceXHxY1v0XarmbWb4-lCL1-EMLd9jemgAsIlUGOzENCIhh7sTlw_sw",
                   "type": "string"
                 }
               ]
@@ -288,7 +288,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "http://127.0.0.1:8000/api/patient/doctors?specialty=Cardiology",
+              "raw": "http://127.0.0.1:8000/api/patient/doctors?pincode=400088",
               "protocol": "http",
               "host": [
                 "127",
@@ -304,8 +304,8 @@
               ],
               "query": [
                 {
-                  "key": "specialty",
-                  "value": "Cardiology"
+                  "key": "pincode",
+                  "value": "400088"
                 }
               ]
             }
@@ -768,7 +768,7 @@
           "response": []
         },
         {
-          "name": "New Request",
+          "name": "Get my profile",
           "id": "2a3d9d15-3eaf-47da-a6bd-4e3eee1f2e6e",
           "request": {
             "method": "GET",
