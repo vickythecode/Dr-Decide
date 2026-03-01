@@ -15,6 +15,10 @@ const specialties = ["Cardiology", "General Medicine", "Neurology", "Orthopedics
 export default function PatientBookAppointmentPage() {
   const { pushToast } = useToast();
   const [specialty, setSpecialty] = useState("Cardiology");
+  const [pincode, setPincode] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return window.localStorage.getItem("patient_profile_pincode") || "";
+  });
   const [loading, setLoading] = useState(false);
   const [doctors, setDoctors] = useState<DoctorDirectoryItem[]>([]);
   const [selected, setSelected] = useState<DoctorDirectoryItem | null>(null);
@@ -26,12 +30,14 @@ export default function PatientBookAppointmentPage() {
   async function onSearch() {
     setLoading(true);
     try {
-      const res = await patientDoctors({ specialty });
+      const cleanPincode = pincode.trim();
+      const res = await patientDoctors({ specialty, pincode: cleanPincode || undefined });
       setDoctors(res.doctors || []);
       (res.doctors || []).forEach((doc) => {
         rememberDoctorName(String(doc.doctor_id || ""), String(doc.doctor_name || ""));
       });
-      pushToast(`Found ${res.total_found} doctor(s)`, "success");
+      const count = Number(res.total_found ?? res.results_found ?? (res.doctors || []).length);
+      pushToast(`Found ${count} doctor(s)`, "success");
     } catch {
       pushToast("Failed to fetch doctors", "error");
     } finally {
@@ -61,7 +67,7 @@ export default function PatientBookAppointmentPage() {
   return (
     <>
       <Card title="Book Appointment by Specialty">
-        <div className="grid gap-2 md:grid-cols-[1fr_180px]">
+        <div className="grid gap-2 md:grid-cols-[1fr_180px_140px]">
           <select
             className="input"
             value={specialty}
@@ -73,6 +79,11 @@ export default function PatientBookAppointmentPage() {
               </option>
             ))}
           </select>
+          <Input
+            value={pincode}
+            onChange={(e) => setPincode(e.target.value)}
+            placeholder="Pincode"
+          />
           <Button loading={loading} onClick={onSearch}>
             Search
           </Button>

@@ -27,9 +27,10 @@ export async function login(payload: { email: string; password: string }) {
 export async function patientDoctors(params: {
   specialty?: string;
   clinic_name?: string;
+  pincode?: string;
 }) {
   const { data } = await api.get("/api/patient/doctors", { params });
-  return data as { total_found: number; doctors: DoctorDirectoryItem[] };
+  return data as { total_found?: number; results_found?: number; doctors: DoctorDirectoryItem[] };
 }
 
 export async function bookAppointment(payload: {
@@ -71,8 +72,27 @@ export async function doctorSetupProfile(payload: {
   doctor_name: string;
   specialty: string;
   clinic_name: string;
+  city: string;
+  state: string;
+  pincode: string;
 }) {
   const { data } = await api.post("/api/doctor/setup-profile", payload);
+  return data;
+}
+
+export async function patientSetupProfile(payload: {
+  full_name: string;
+  age: number;
+  gender: string;
+  phone_number: string;
+  blood_group?: string;
+  emergency_contact?: string;
+  known_allergies?: string;
+  city: string;
+  state: string;
+  pincode: string;
+}) {
+  const { data } = await api.post("/api/patient/setup-profile", payload);
   return data;
 }
 
@@ -93,23 +113,27 @@ export async function doctorAppointments() {
 
   // 2. Create a fast lookup map for patient names: { "123-abc": "John Doe" }
   const patientNameMap: Record<string, string> = {};
-  
-  if (patientData && patientData.patients) {
-    patientData.patients.forEach((patient: any) => {
-      patientNameMap[patient.patient_id] = patient.patient_name;
+
+  const patients = ((patientData as { patients?: DoctorPatientsItem[] })?.patients || []) as DoctorPatientsItem[];
+  if (patients.length) {
+    patients.forEach((patient) => {
+      const patientId = String(patient.patient_id || "");
+      const patientName = String(patient.patient_name || "");
+      if (patientId && patientName) patientNameMap[patientId] = patientName;
     });
   }
 
   // 3. Loop through the appointments and inject the patient's real name
-  const enrichedSchedule = apptData.schedule.map((appt: any) => ({
+  const schedule = ((apptData as { schedule?: DoctorAppointmentItem[] })?.schedule || []) as DoctorAppointmentItem[];
+  const enrichedSchedule = schedule.map((appt) => ({
     ...appt,
     // Add the name if we found it, otherwise fallback to "Unknown"
-    patient_name: patientNameMap[appt.patient_id] || "Unknown Patient"
+    patient_name: patientNameMap[String(appt.patient_id || "")] || appt.patient_name || "Unknown Patient"
   }));
 
   // 4. Return the enriched data matching your TypeScript interface
   return {
-    total_appointments: apptData.total_appointments,
+    total_appointments: Number((apptData as { total_appointments?: number })?.total_appointments || 0),
     schedule: enrichedSchedule
   } as { total_appointments: number; schedule: DoctorAppointmentItem[] };
 }

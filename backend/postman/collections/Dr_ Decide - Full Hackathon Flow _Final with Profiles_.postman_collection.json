@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "5aa143c2-1ca0-4571-be9e-83f854f5a80f",
     "name": "Dr. Decide - Full Hackathon Flow (Final with Profiles)",
-    "description": "Complete End-to-End API testing using Postman's native Bearer Token authentication, including the new Patient Profile flow.",
+    "description": "Complete End-to-End API testing using Postman's native Bearer Token authentication, including profile setup. After signup/login, call setup-profile endpoints to store actual details (names and location) before testing doctor search, booking, dashboard, and appointment views.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -250,7 +250,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"full_name\": \"John Doe\",\n  \"age\": 34,\n  \"gender\": \"Male\",\n  \"phone_number\": \"+919876543210\",\n  \"blood_group\": \"O+\",\n  \"emergency_contact\": \"+919876543211\",\n  \"known_allergies\": \"Penicillin\"\n}"
+              "raw": "{\n  \"full_name\": \"John Doe\",\n  \"age\": 34,\n  \"gender\": \"Male\",\n  \"phone_number\": \"+919876543210\",\n  \"blood_group\": \"O+\",\n  \"emergency_contact\": \"+919876543211\",\n  \"known_allergies\": \"Penicillin\",\n  \"city\": \"Mumbai\",\n  \"state\": \"Maharashtra\",\n  \"pincode\": \"400088\"\n}"
             },
             "url": {
               "raw": "http://127.0.0.1:8000/api/patient/setup-profile",
@@ -597,7 +597,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"doctor_name\": \"Dr. Jane Smith\",\n  \"specialty\": \"Neurology\",\n  \"clinic_name\": \"Brain Health Clinic\",\n   \"city\": \"Mumbai\",\n   \"state\": \"Maharashtra\"\n   \"pincode\": \"400088\"\n\n}"
+              "raw": "{\n  \"doctor_name\": \"Dr. Jane Smith\",\n  \"specialty\": \"Neurology\",\n  \"clinic_name\": \"Brain Health Clinic\",\n  \"city\": \"Mumbai\",\n  \"state\": \"Maharashtra\",\n  \"pincode\": \"400088\"\n}"
             },
             "url": {
               "raw": "http://127.0.0.1:8000/api/doctor/setup-profile",
@@ -771,10 +771,33 @@
           "name": "Get my profile",
           "id": "2a3d9d15-3eaf-47da-a6bd-4e3eee1f2e6e",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "PASTE_DOCTOR_ID_TOKEN_HERE",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "header": [],
             "url": {
-              "raw": ""
+              "raw": "http://127.0.0.1:8000/api/doctor/profile",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "doctor",
+                "profile"
+              ]
             }
           },
           "response": []

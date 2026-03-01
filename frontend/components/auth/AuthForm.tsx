@@ -14,6 +14,12 @@ import { roleToDashboardPath, roleToSlug } from "@/lib/roles";
 
 type Mode = "login" | "signup";
 
+function roleToPostLoginPath(role: Role): string {
+  if (role === "Doctor") return "/doctor/profile";
+  if (role === "Patient") return "/patient/profile";
+  return roleToDashboardPath(role);
+}
+
 export default function AuthForm({ mode, fixedRole }: { mode: Mode; fixedRole?: Role }) {
   const router = useRouter();
   const { pushToast } = useToast();
@@ -43,7 +49,7 @@ export default function AuthForm({ mode, fixedRole }: { mode: Mode; fixedRole?: 
         }
         setSession(token, role);
         pushToast("Login successful", "success");
-        router.push(roleToDashboardPath(role));
+        router.push(roleToPostLoginPath(role));
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Request failed";
