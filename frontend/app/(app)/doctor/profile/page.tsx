@@ -5,6 +5,7 @@ import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
 import { useToast } from "@/context/ToastContext";
+import { getAuthSubject, rememberDoctorName } from "@/lib/identity";
 import { doctorSetupProfile } from "@/lib/services";
 
 export default function DoctorProfilePage() {
@@ -31,6 +32,8 @@ export default function DoctorProfilePage() {
         window.localStorage.setItem("doctor_profile_doctorName", doctorName);
         window.localStorage.setItem("doctor_profile_specialty", specialty);
         window.localStorage.setItem("doctor_profile_clinicName", clinicName);
+        const subject = getAuthSubject();
+        if (subject) rememberDoctorName(subject, doctorName);
       }
       pushToast("Profile setup complete", "success");
     } catch {

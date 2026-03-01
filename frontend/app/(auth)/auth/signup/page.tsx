@@ -6,7 +6,6 @@ export default function SignupPage() {
   const roles: Array<{ role: Role; slug: string; desc: string }> = [
     { role: "Patient", slug: "patient", desc: "Create patient account for appointments and follow-ups." },
     { role: "Doctor", slug: "doctor", desc: "Create doctor account for consultation workflows." },
-    { role: "Receptionist", slug: "receptionist", desc: "Create receptionist account for queue operations." },
   ];
 
   return (

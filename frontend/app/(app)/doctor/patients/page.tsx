@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import { useToast } from "@/context/ToastContext";
+import { formatNameWithId } from "@/lib/display";
+import { resolvePatientName } from "@/lib/identity";
 import { doctorPatients } from "@/lib/services";
 import { DoctorPatientsItem } from "@/types";
 
@@ -34,7 +36,7 @@ export default function DoctorPatientsPage() {
         <table className="table">
           <thead>
             <tr>
-              <th>Patient ID</th>
+              <th>Patient</th>
               <th>Latest Appointment</th>
               <th>Status</th>
               <th>Follow Up</th>
@@ -43,7 +45,7 @@ export default function DoctorPatientsPage() {
           <tbody>
             {rows.map((row, idx) => (
               <tr key={`${idx}-${String(row.patient_id || idx)}`}>
-                <td>{row.patient_id || ""}</td>
+                <td>{formatNameWithId(row.patient_name || resolvePatientName(String(row.patient_id || "")), row.patient_id, "")}</td>
                 <td>{row.latest_appointment_id || ""}</td>
                 <td>{row.status || ""}</td>
                 <td>{row.follow_up_reminder || ""}</td>

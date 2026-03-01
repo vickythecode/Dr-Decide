@@ -23,6 +23,8 @@ export default function AuthForm({ mode, fixedRole }: { mode: Mode; fixedRole?: 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const roleOptions: Role[] =
+    mode === "signup" ? (["Patient", "Doctor"] as Role[]) : (["Patient", "Doctor", "Receptionist"] as Role[]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -61,7 +63,7 @@ export default function AuthForm({ mode, fixedRole }: { mode: Mode; fixedRole?: 
           <>
             <label className="text-sm font-semibold">Role</label>
             <div className="flex gap-2">
-              {(["Patient", "Doctor", "Receptionist"] as Role[]).map((item) => (
+              {roleOptions.map((item) => (
                 <button
                   key={item}
                   type="button"

@@ -6,12 +6,14 @@ import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
 import { useToast } from "@/context/ToastContext";
+import { formatNameWithId } from "@/lib/display";
 import { doctorConsultation } from "@/lib/services";
 
 function DoctorConsultationForm() {
   const searchParams = useSearchParams();
   const { pushToast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [patientLabel, setPatientLabel] = useState("");
   const [form, setForm] = useState({
     patient_id: "",
     appointment_id: "",
@@ -24,8 +26,10 @@ function DoctorConsultationForm() {
 
   useEffect(() => {
     const patientId = searchParams.get("patient_id") || "";
+    const patientName = searchParams.get("patient_name") || "";
     const appointmentId = searchParams.get("appointment_id") || "";
     if (!patientId && !appointmentId) return;
+    setPatientLabel(formatNameWithId(patientName, patientId, ""));
     setForm((prev) => ({
       ...prev,
       patient_id: patientId || prev.patient_id,
@@ -48,6 +52,7 @@ function DoctorConsultationForm() {
   return (
     <Card title="Submit Consultation">
       <div className="space-y-3">
+        {patientLabel && <p className="text-sm muted">Selected patient: {patientLabel}</p>}
         <Input
           value={form.patient_id}
           onChange={(e) => setForm((prev) => ({ ...prev, patient_id: e.target.value }))}

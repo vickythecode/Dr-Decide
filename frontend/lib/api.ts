@@ -21,6 +21,23 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (axios.isAxiosError(error)) {
+      const detail = error.response?.data?.detail;
+      const message = error.response?.data?.message;
+      const fallback = error.message || "Request failed";
+      const resolved =
+        (typeof detail === "string" && detail) ||
+        (typeof message === "string" && message) ||
+        fallback;
+      return Promise.reject(new Error(resolved));
+    }
+    return Promise.reject(error);
+  }
+);
+
 export function authHeader(token?: string) {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }

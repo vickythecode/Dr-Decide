@@ -5,6 +5,7 @@ import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
 import { useToast } from "@/context/ToastContext";
+import { getAuthSubject, rememberPatientName } from "@/lib/identity";
 
 export default function PatientProfilePage() {
   const { pushToast } = useToast();
@@ -34,6 +35,8 @@ export default function PatientProfilePage() {
         window.localStorage.setItem("patient_profile_age", age);
         window.localStorage.setItem("patient_profile_bloodGroup", bloodGroup);
         window.localStorage.setItem("patient_profile_emergencyContact", emergencyContact);
+        const subject = getAuthSubject();
+        if (subject) rememberPatientName(subject, fullName);
       }
       setLoading(false);
       pushToast("Profile updated locally", "success");

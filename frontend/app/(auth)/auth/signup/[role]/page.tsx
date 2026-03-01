@@ -9,10 +9,9 @@ export default async function RoleSignupPage({
 }) {
   const { role: roleSlug } = await params;
   const role = slugToRole(roleSlug);
-  if (!role) {
+  if (!role || role === "Receptionist") {
     notFound();
   }
 
   return <AuthForm mode="signup" fixedRole={role} />;
 }
-

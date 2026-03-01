@@ -6,6 +6,7 @@ import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
 import Modal from "@/components/ui/Modal";
 import { useToast } from "@/context/ToastContext";
+import { rememberDoctorName } from "@/lib/identity";
 import { bookAppointment, patientDoctors } from "@/lib/services";
 import { DoctorDirectoryItem } from "@/types";
 
@@ -27,6 +28,9 @@ export default function PatientBookAppointmentPage() {
     try {
       const res = await patientDoctors({ specialty });
       setDoctors(res.doctors || []);
+      (res.doctors || []).forEach((doc) => {
+        rememberDoctorName(String(doc.doctor_id || ""), String(doc.doctor_name || ""));
+      });
       pushToast(`Found ${res.total_found} doctor(s)`, "success");
     } catch {
       pushToast("Failed to fetch doctors", "error");

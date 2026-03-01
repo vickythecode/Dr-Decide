@@ -5,6 +5,8 @@ import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
 import { useToast } from "@/context/ToastContext";
+import { firstPresent, formatNameWithId } from "@/lib/display";
+import { resolvePatientName } from "@/lib/identity";
 import { hospitalCheckIn } from "@/lib/services";
 import { formatDateTimeIST } from "@/lib/datetime";
 
@@ -62,7 +64,15 @@ export default function ReceptionistGenerateTokenPage() {
           {tokens.map((token, idx) => (
             <div key={idx} className="rounded-lg border border-[var(--border)] bg-[#f6fbfc] p-3 text-sm">
               <p>Token: {String(token.token_number || "-")}</p>
-              <p>Patient: {String(token.patient_id || patientId || "-")}</p>
+              <p>
+                Patient:{" "}
+                {formatNameWithId(
+                  firstPresent(token, ["patient_name", "patient_full_name", "full_name", "name"]) ||
+                    resolvePatientName(String(token.patient_id || patientId || "")),
+                  token.patient_id || patientId,
+                  "-"
+                )}
+              </p>
               <p>Service: {String(token.serviceType || "-")} ({String(token.priority || "-")})</p>
               <p className="muted mt-1 text-xs">{String(token.generatedAt || "-")}</p>
             </div>

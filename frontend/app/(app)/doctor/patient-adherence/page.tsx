@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import { useToast } from "@/context/ToastContext";
+import { formatNameWithId } from "@/lib/display";
+import { resolvePatientName } from "@/lib/identity";
 import { doctorPatients } from "@/lib/services";
 import { DoctorPatientsItem } from "@/types";
 
@@ -26,7 +28,7 @@ export default function DoctorPatientAdherencePage() {
       const mapped = (res.patients || []).map((row: DoctorPatientsItem) => {
         const rawAdherence = row.adherence_percentage;
         return {
-          patient: String(row.patient_id || ""),
+          patient: formatNameWithId(row.patient_name || resolvePatientName(String(row.patient_id || "")), row.patient_id, ""),
           latestAppointment: String(row.latest_appointment_id || ""),
           adherence: typeof rawAdherence === "number" ? `${rawAdherence}%` : "N/A",
           status: String(row.status || "Unknown"),

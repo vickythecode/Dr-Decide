@@ -7,9 +7,13 @@ import { patientAppointments } from "@/lib/services";
 import { AppointmentItem } from "@/types";
 import { useToast } from "@/context/ToastContext";
 import { formatDateTimeIST } from "@/lib/datetime";
+import { formatNameWithId } from "@/lib/display";
+import { rememberDoctorName, resolveDoctorName } from "@/lib/identity";
 
 function displayDoctorName(item: AppointmentItem) {
-  if (item.doctor_name) return item.doctor_name;
+  if (item.doctor_name || resolveDoctorName(String(item.doctor_id || ""))) {
+    return formatNameWithId(item.doctor_name || resolveDoctorName(String(item.doctor_id || "")), item.doctor_id);
+  }
   if (item.doctor_email) return item.doctor_email;
   if (item.doctor_id) return item.doctor_id;
   return "-";
@@ -28,6 +32,11 @@ export default function PatientMyAppointmentsPage() {
     setLoading(true);
     try {
       const res = await patientAppointments();
+      (res.appointments || []).forEach((item) => {
+        if (item.doctor_id && item.doctor_name) {
+          rememberDoctorName(String(item.doctor_id), String(item.doctor_name));
+        }
+      });
       setItems(res.appointments || []);
     } catch {
       pushToast("Failed to fetch appointments", "error");

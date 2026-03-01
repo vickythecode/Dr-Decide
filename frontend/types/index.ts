@@ -22,6 +22,7 @@ export interface AppointmentItem {
   appointment_id: string;
   patient_email?: string;
   patient_id?: string;
+  patient_name?: string;
   doctor_id?: string;
   doctor_email?: string;
   doctor_name?: string;
@@ -69,12 +70,15 @@ export interface DoctorAppointmentItem {
   appointment_id: string;
   appointment_date: string;
   patient_id?: string;
+  patient_name?: string;
+  patient_email?: string;
   reason?: string;
   status?: string;
 }
 
 export interface DoctorPatientsItem {
   patient_id?: string;
+  patient_name?: string;
   latest_appointment_id?: string;
   status?: string;
   follow_up_reminder?: string;

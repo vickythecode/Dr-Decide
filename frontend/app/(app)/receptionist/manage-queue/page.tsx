@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import { useToast } from "@/context/ToastContext";
+import { firstPresent, formatNameWithId } from "@/lib/display";
+import { resolvePatientName } from "@/lib/identity";
 import { hospitalQueue } from "@/lib/services";
 
 export default function ReceptionistManageQueuePage() {
@@ -45,7 +47,14 @@ export default function ReceptionistManageQueuePage() {
             {queue.map((row, idx) => (
               <tr key={`${String(row.token_number || idx)}-${idx}`}>
                 <td>{String(row.token_number || "-")}</td>
-                <td>{String(row.patient_id || "-")}</td>
+                <td>
+                  {formatNameWithId(
+                    firstPresent(row, ["patient_name", "patient_full_name", "full_name", "name"]) ||
+                      resolvePatientName(String(row.patient_id || "")),
+                    row.patient_id,
+                    "-"
+                  )}
+                </td>
                 <td>{String(row.appointment_id || "-")}</td>
                 <td>{String(row.status || "-")}</td>
               </tr>
@@ -63,4 +72,3 @@ export default function ReceptionistManageQueuePage() {
     </Card>
   );
 }
-

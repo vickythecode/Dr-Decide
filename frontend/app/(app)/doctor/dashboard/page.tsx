@@ -5,6 +5,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import { useToast } from "@/context/ToastContext";
+import { formatNameWithId } from "@/lib/display";
+import { rememberPatientName, resolvePatientName } from "@/lib/identity";
 import { doctorAppointments, doctorDashboardStats, doctorPatients } from "@/lib/services";
 import { DoctorAppointmentItem, DoctorDashboardResponse, DoctorPatientsItem } from "@/types";
 import { formatDateTimeIST, nowISTDateKey, toISTDateKey } from "@/lib/datetime";
@@ -14,6 +16,7 @@ export default function DoctorDashboardPage() {
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<DoctorDashboardResponse | null>(null);
   const [patients, setPatients] = useState<DoctorPatientsItem[]>([]);
+  const [totalPatients, setTotalPatients] = useState<number | null>(null);
   const [appointmentRows, setAppointmentRows] = useState<DoctorAppointmentItem[]>([]);
   const [dailyLimit, setDailyLimit] = useState<number | null>(null);
 
@@ -25,9 +28,20 @@ export default function DoctorDashboardPage() {
         doctorPatients(),
         doctorAppointments(),
       ]);
+      (patientsRes.patients || []).forEach((row) => {
+        if (row.patient_id && row.patient_name) {
+          rememberPatientName(String(row.patient_id), String(row.patient_name));
+        }
+      });
+      (appointmentsRes.schedule || []).forEach((row) => {
+        if (row.patient_id && row.patient_name) {
+          rememberPatientName(String(row.patient_id), String(row.patient_name));
+        }
+      });
       setStats(dashboardRes);
       setDailyLimit(dashboardRes.metrics.today_appointments_limit);
       setPatients(patientsRes.patients || []);
+      setTotalPatients(patientsRes.total_patients ?? (patientsRes.patients || []).length);
       setAppointmentRows(appointmentsRes.schedule || []);
     } catch {
       pushToast("Failed to load dashboard stats", "error");
@@ -39,6 +53,11 @@ export default function DoctorDashboardPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const todayAppointmentsCount = useMemo(() => {
+    const today = nowISTDateKey();
+    return appointmentRows.filter((row) => toISTDateKey(row.appointment_date) === today).length;
+  }, [appointmentRows]);
 
   const todaysAppointments = useMemo(() => {
     const today = nowISTDateKey();
@@ -72,6 +91,11 @@ export default function DoctorDashboardPage() {
     });
   }
 
+  function getResolvedPatientName(row: DoctorAppointmentItem) {
+    const patientId = String(row.patient_id || "");
+    return row.patient_name || row.patient_email || resolvePatientName(patientId);
+  }
+
   return (
     <div className="space-y-4">
       <Card title="Doctor Dashboard">
@@ -81,8 +105,8 @@ export default function DoctorDashboardPage() {
       </Card>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <Card title="Total Patients"><p className="kpi-value">{stats?.metrics.total_patients ?? "-"}</p></Card>
-        <Card title="Today Appointments"><p className="kpi-value">{stats?.metrics.today_appointments_booked ?? "-"}</p></Card>
+        <Card title="Total Patients"><p className="kpi-value">{totalPatients ?? "-"}</p></Card>
+        <Card title="Today Appointments"><p className="kpi-value">{todayAppointmentsCount}</p></Card>
         <Card title="Current Daily Limit"><p className="kpi-value">{dailyLimit ?? "-"}</p></Card>
         <Card title="Care Plans"><p className="kpi-value">{stats?.metrics.care_plans_generated ?? "-"}</p></Card>
         <Card title="Critical Alerts"><p className="kpi-value">{stats?.metrics.critical_alerts ?? "-"}</p></Card>
@@ -94,10 +118,12 @@ export default function DoctorDashboardPage() {
             {todaysAppointments.map((row, idx) => (
               <div key={`${row.patient_id}-${idx}`} className="rounded-lg border border-[var(--border)] bg-[#f6fbfc] px-3 py-2 text-sm">
                 <div className="flex items-center justify-between gap-2">
-                  <span>{formatDateTimeIST(row.appointment_date)} - {row.patient_id} ({row.reason})</span>
+                  <span>
+                    {formatDateTimeIST(row.appointment_date)} - {formatNameWithId(getResolvedPatientName(row), String(row.patient_id || ""))} ({row.reason})
+                  </span>
                   <Link
                     className="pill"
-                    href={`/doctor/consultation?appointment_id=${encodeURIComponent(String(row.appointment_id || ""))}&patient_id=${encodeURIComponent(String(row.patient_id || ""))}`}
+                    href={`/doctor/consultation?appointment_id=${encodeURIComponent(String(row.appointment_id || ""))}&patient_id=${encodeURIComponent(String(row.patient_id || ""))}&patient_name=${encodeURIComponent(String(getResolvedPatientName(row) || ""))}`}
                   >
                     Consult
                   </Link>
