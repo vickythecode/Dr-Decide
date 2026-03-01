@@ -33,6 +33,42 @@ async def get_patient_appointments(
             FilterExpression=Attr('patient_email').eq(patient_email)
         )
         my_appointments = response.get('Items', [])
+
+        # Enrich appointments with doctor profile fields for consistent frontend display.
+        for appt in my_appointments:
+            doctor_ref = appt.get('doctor_id') or appt.get('doctor_email')
+            if doctor_ref:
+                appt['doctor_id'] = doctor_ref
+
+                needs_profile = not appt.get('doctor_name') or not appt.get('clinic_name')
+                if needs_profile:
+                    profile = None
+                    try:
+                        by_id = doctors_table.get_item(Key={'doctor_id': doctor_ref})
+                        profile = by_id.get('Item')
+                    except Exception as lookup_err:
+                        print(f"Doctor lookup by id failed for {doctor_ref}: {lookup_err}")
+
+                    # Backward compatibility: some historical rows may store doctor email in doctor_ref.
+                    if not profile:
+                        try:
+                            by_email = doctors_table.scan(
+                                FilterExpression=Attr('email').eq(doctor_ref)
+                            )
+                            profile_items = by_email.get('Items', [])
+                            if profile_items:
+                                profile = profile_items[0]
+                                if not appt.get('doctor_id'):
+                                    appt['doctor_id'] = profile.get('doctor_id')
+                        except Exception as lookup_err:
+                            print(f"Doctor lookup by email failed for {doctor_ref}: {lookup_err}")
+
+                    if profile:
+                        if profile.get('doctor_name'):
+                            appt['doctor_name'] = profile.get('doctor_name')
+                        if profile.get('clinic_name'):
+                            appt['clinic_name'] = profile.get('clinic_name')
+
         my_appointments.sort(key=lambda x: x.get('appointment_date', ''), reverse=True)
         
         return {"total_visits": len(my_appointments), "appointments": my_appointments}
@@ -106,12 +142,22 @@ async def book_appointment(
     patient_email = current_user.get('email') or current_user.get('cognito:username') or current_user.get('username')
     
     appointment_id = f"APT-{uuid.uuid4().hex[:6].upper()}"
+
+    doctor_profile = None
+    try:
+        doctor_profile_res = doctors_table.get_item(Key={'doctor_id': req.doctor_id})
+        doctor_profile = doctor_profile_res.get('Item')
+    except Exception as lookup_err:
+        print(f"Doctor profile lookup failed for {req.doctor_id}: {lookup_err}")
     
     record = {
         'appointment_id': appointment_id,
         'patient_email': patient_email,
         'patient_id': patient_id, 
-        'doctor_email': req.doctor_id, 
+        'doctor_id': req.doctor_id,
+        'doctor_email': (doctor_profile or {}).get('email', req.doctor_id),
+        'doctor_name': (doctor_profile or {}).get('doctor_name', ''),
+        'clinic_name': (doctor_profile or {}).get('clinic_name', ''),
         'appointment_date': req.appointment_date,
         'reason': req.reason,
         'status': 'Scheduled'
