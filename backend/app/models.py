@@ -46,3 +46,17 @@ class DoctorProfileSetup(BaseModel):
     doctor_name: str
     specialty: str
     clinic_name: str
+    city: str
+    state: str
+    pincode: str
+class PatientProfileSetup(BaseModel):
+    full_name: str
+    age: int
+    gender: str
+    phone_number: str
+    blood_group: Optional[str] = "Unknown"
+    emergency_contact: Optional[str] = None
+    known_allergies: Optional[str] = "None"
+    city: str
+    state: str
+    pincode: str

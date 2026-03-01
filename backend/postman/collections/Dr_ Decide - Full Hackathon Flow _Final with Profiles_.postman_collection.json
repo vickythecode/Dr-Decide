@@ -1,8 +1,8 @@
 {
   "info": {
-    "_postman_id": "a1c7593d-7663-44cf-8963-f2dfbf8932a4",
-    "name": "Dr. Decide - Full Hackathon Flow (Native Bearer Auth)",
-    "description": "Complete End-to-End API testing using Postman's native Bearer Token authentication.",
+    "_postman_id": "5aa143c2-1ca0-4571-be9e-83f854f5a80f",
+    "name": "Dr. Decide - Full Hackathon Flow (Final with Profiles)",
+    "description": "Complete End-to-End API testing using Postman's native Bearer Token authentication, including the new Patient Profile flow.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -11,7 +11,7 @@
       "item": [
         {
           "name": "Doctor Sign Up",
-          "id": "aa9d0c95-85ae-41a5-81a3-239ae4113e51",
+          "id": "5c0a6c37-b796-4a9f-a90a-753763e26a60",
           "request": {
             "method": "POST",
             "header": [
@@ -45,7 +45,7 @@
         },
         {
           "name": "Doctor Login (Copy IdToken!)",
-          "id": "e626f5b1-9e87-4c86-986c-bb6ad76135a9",
+          "id": "43c17c94-d03b-4cc4-bb3f-917281851fb7",
           "request": {
             "method": "POST",
             "header": [
@@ -75,11 +75,52 @@
               ]
             }
           },
-          "response": []
+          "response": [
+            {
+              "id": "1b5b41ed-9313-47d2-b4cd-7d9fc93da4ca",
+              "name": "Priya",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"priya.nair@drdecide.com\",\n  \"password\": \"Hackathon2026!\"\n}"
+                },
+                "url": {
+                  "raw": "http://127.0.0.1:8000/api/auth/login",
+                  "protocol": "http",
+                  "host": [
+                    "127",
+                    "0",
+                    "0",
+                    "1"
+                  ],
+                  "port": "8000",
+                  "path": [
+                    "api",
+                    "auth",
+                    "login"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [],
+              "cookie": [],
+              "responseTime": "2026-03-01T10:39:03.500Z",
+              "body": null
+            }
+          ]
         },
         {
           "name": "Patient Sign Up",
-          "id": "5ea3f5e2-0d56-4bc6-b469-98a63ec463c0",
+          "id": "3d696099-0273-4767-8c9b-a8a5350f702d",
           "request": {
             "method": "POST",
             "header": [
@@ -113,7 +154,7 @@
         },
         {
           "name": "Patient Login (Copy IdToken!)",
-          "id": "7f89d067-ebeb-4468-9f7f-9e6c862e1d1a",
+          "id": "959d6a7f-39b5-46cc-97ee-3d5d88fcfad4",
           "request": {
             "method": "POST",
             "header": [
@@ -146,14 +187,93 @@
           "response": []
         }
       ],
-      "id": "8a8d000a-f795-4a51-aa51-63b0c4abf17e"
+      "id": "cdfbd46b-f960-4fa8-8c81-ff5bcc906820"
     },
     {
       "name": "2. Patient Flow",
       "item": [
         {
+          "name": "Check Profile Status",
+          "id": "19f97efc-9418-4ac1-9d52-a1b25109d631",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "PASTE_PATIENT_ID_TOKEN_HERE",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/patient/profile",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "patient",
+                "profile"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Setup Patient Profile",
+          "id": "6a1eb62e-cc61-408b-b4af-d191a598bbd7",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "PASTE_PATIENT_ID_TOKEN_HERE",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"John Doe\",\n  \"age\": 34,\n  \"gender\": \"Male\",\n  \"phone_number\": \"+919876543210\",\n  \"blood_group\": \"O+\",\n  \"emergency_contact\": \"+919876543211\",\n  \"known_allergies\": \"Penicillin\"\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/patient/setup-profile",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "patient",
+                "setup-profile"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "Search Doctors Directory",
-          "id": "25ee8216-b84a-4c39-89ca-e1dcc1b82902",
+          "id": "84b2c5c0-93f3-4a82-9aad-cebe2263a53e",
           "request": {
             "auth": {
               "type": "bearer",
@@ -194,7 +314,7 @@
         },
         {
           "name": "Book Appointment",
-          "id": "d2620850-bd11-47fc-9d6f-197b38aae0d5",
+          "id": "ce4adc7e-9902-49ac-949f-a6bfa76b8ca6",
           "request": {
             "auth": {
               "type": "bearer",
@@ -215,7 +335,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"doctor_id\": \"PASTE_DOCTOR_SUB_ID_HERE\",\n  \"appointment_date\": \"2026-03-01T10:00:00Z\",\n  \"reason\": \"Routine Cardiology Checkup\"\n}"
+              "raw": "{\n  \"doctor_id\": \"PASTE_DOCTOR_SUB_ID_HERE\",\n  \"appointment_date\": \"2026-03-05T10:00:00Z\",\n  \"reason\": \"Routine Checkup\"\n}"
             },
             "url": {
               "raw": "http://127.0.0.1:8000/api/patient/book-appointment",
@@ -238,7 +358,7 @@
         },
         {
           "name": "View My Appointments",
-          "id": "a9cd30f1-78a0-464f-ad23-592df5059497",
+          "id": "277d9782-1773-42d6-8bd3-5c8ef55d1f00",
           "request": {
             "auth": {
               "type": "bearer",
@@ -273,7 +393,7 @@
         },
         {
           "name": "View AI Care Plan",
-          "id": "892462a0-827a-45be-8b8e-374115fac12d",
+          "id": "bbab3516-5575-4124-aca3-79e5598d0a97",
           "request": {
             "auth": {
               "type": "bearer",
@@ -308,7 +428,7 @@
         },
         {
           "name": "Log Task as Done",
-          "id": "f47d2c3b-b6e5-45e3-9d8b-90a0f7c12eb8",
+          "id": "fda88948-995a-4fb1-9967-0795d821445b",
           "request": {
             "auth": {
               "type": "bearer",
@@ -352,7 +472,7 @@
         },
         {
           "name": "View My Notifications",
-          "id": "251ab2b4-5c62-497f-aacc-7e417c3d0d79",
+          "id": "23164813-9c9c-4354-9b8f-5331b6e85445",
           "request": {
             "auth": {
               "type": "bearer",
@@ -386,14 +506,14 @@
           "response": []
         }
       ],
-      "id": "0b733335-d450-4786-83a6-fe3004b8cf85"
+      "id": "f7968b58-54ea-411f-bb88-c6b570bfc9fd"
     },
     {
       "name": "3. Hospital Flow (No Auth Required for Kiosk/TV)",
       "item": [
         {
           "name": "Kiosk Check-In (Generate Token)",
-          "id": "db0f5014-1d1c-4211-91e1-e0cf36d8b963",
+          "id": "109ad7c4-b521-48e4-a436-36785db1d596",
           "request": {
             "method": "POST",
             "header": [],
@@ -425,7 +545,7 @@
         },
         {
           "name": "Waiting Room TV (Queue Status)",
-          "id": "a13df4a1-8b90-4c23-84dc-063b51759474",
+          "id": "1d2644bc-2367-4343-ba5b-2cf715eb1644",
           "request": {
             "method": "GET",
             "header": [],
@@ -449,14 +569,14 @@
           "response": []
         }
       ],
-      "id": "eaff6c6b-9e41-43e9-a4f1-d26729168e80"
+      "id": "86335587-1655-40fd-a0c5-fc638f870b3e"
     },
     {
       "name": "4. Doctor Flow",
       "item": [
         {
-          "name": "Setup Doctor Profile (New Doctor)",
-          "id": "955bd6a7-1e30-4c69-a402-d703adc3dc33",
+          "name": "Setup Doctor Profile",
+          "id": "070158d8-bf59-4196-866d-0e1be4ef879e",
           "request": {
             "auth": {
               "type": "bearer",
@@ -477,7 +597,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"doctor_name\": \"Dr. Jane Smith\",\n  \"specialty\": \"Neurology\",\n  \"clinic_name\": \"Brain Health Clinic\"\n}"
+              "raw": "{\n  \"doctor_name\": \"Dr. Jane Smith\",\n  \"specialty\": \"Neurology\",\n  \"clinic_name\": \"Brain Health Clinic\",\n   \"city\": \"Mumbai\",\n   \"state\": \"Maharashtra\"\n   \"pincode\": \"400088\"\n\n}"
             },
             "url": {
               "raw": "http://127.0.0.1:8000/api/doctor/setup-profile",
@@ -500,7 +620,7 @@
         },
         {
           "name": "View Dashboard Stats",
-          "id": "f72cb052-8b88-4dba-b15b-a362f88317bc",
+          "id": "4d055d53-aaa1-4ae5-b6d6-8b545c0e91d6",
           "request": {
             "auth": {
               "type": "bearer",
@@ -535,7 +655,7 @@
         },
         {
           "name": "View My Appointments",
-          "id": "20e9a8f6-4fb0-481d-8979-8de5220fc3ca",
+          "id": "8299f535-de46-4490-b6b1-c06b867ebb66",
           "request": {
             "auth": {
               "type": "bearer",
@@ -570,7 +690,7 @@
         },
         {
           "name": "View My Patients Directory",
-          "id": "6461f44f-52d5-4e9d-8007-6bb1a4a9d8bc",
+          "id": "c59975ab-8350-444f-b10c-6518bc5a105f",
           "request": {
             "auth": {
               "type": "bearer",
@@ -604,8 +724,8 @@
           "response": []
         },
         {
-          "name": "Submit Consultation (Claude 3 AI + SNS)",
-          "id": "0975309f-53f0-43b2-9027-14b4852baa3a",
+          "name": "Submit Consultation (AI Engine + SNS)",
+          "id": "722d5d78-cd16-45c2-9043-b068cbb7e004",
           "request": {
             "auth": {
               "type": "bearer",
@@ -645,177 +765,22 @@
               ]
             }
           },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "var template = `",
-                  "<style>",
-                  "  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background: #f5f5f5; }",
-                  "  .container { max-width: 800px; margin: 0 auto; }",
-                  "  .card { background: white; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }",
-                  "  .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; }",
-                  "  .header h1 { margin: 0; font-size: 24px; }",
-                  "  .status-badge { display: inline-block; padding: 8px 16px; border-radius: 20px; font-weight: bold; margin-top: 10px; }",
-                  "  .status-success { background: #d4edda; color: #155724; }",
-                  "  .status-error { background: #f8d7da; color: #721c24; }",
-                  "  .info-row { display: flex; border-bottom: 1px solid #eee; padding: 12px 0; }",
-                  "  .info-label { font-weight: 600; color: #666; width: 150px; flex-shrink: 0; }",
-                  "  .info-value { color: #333; word-break: break-word; }",
-                  "  .care-plan-section { margin-top: 15px; }",
-                  "  .care-plan-title { font-size: 18px; font-weight: 600; color: #667eea; margin-bottom: 15px; }",
-                  "  .time-slot { background: #f8f9fa; border-left: 4px solid #667eea; padding: 15px; margin-bottom: 10px; border-radius: 0 8px 8px 0; }",
-                  "  .time-slot-header { font-weight: 600; color: #667eea; margin-bottom: 8px; }",
-                  "  .time-slot-content { color: #555; line-height: 1.6; }",
-                  "  .chart-container { height: 300px; margin-top: 20px; }",
-                  "</style>",
-                  "",
-                  "<div class='container'>",
-                  "  <div class='header'>",
-                  "    <h1>🏥 Consultation Summary</h1>",
-                  "    <span class='status-badge {{#if isSuccess}}status-success{{else}}status-error{{/if}}'>{{status}}</span>",
-                  "  </div>",
-                  "  ",
-                  "  <div class='card'>",
-                  "    <div class='info-row'>",
-                  "      <span class='info-label'>Patient ID</span>",
-                  "      <span class='info-value'>{{patient_id}}</span>",
-                  "    </div>",
-                  "    <div class='info-row'>",
-                  "      <span class='info-label'>Follow-up</span>",
-                  "      <span class='info-value'>{{follow_up_reminder}}</span>",
-                  "    </div>",
-                  "  </div>",
-                  "",
-                  "  <div class='card'>",
-                  "    <div class='care-plan-title'>📋 AI-Generated Care Plan</div>",
-                  "    {{#each carePlanItems}}",
-                  "    <div class='time-slot'>",
-                  "      <div class='time-slot-header'>{{timeSlot}}</div>",
-                  "      <div class='time-slot-content'>{{instructions}}</div>",
-                  "    </div>",
-                  "    {{/each}}",
-                  "  </div>",
-                  "",
-                  "  <div class='card'>",
-                  "    <div class='care-plan-title'>📊 Care Plan Distribution</div>",
-                  "    <div class='chart-container'>",
-                  "      <canvas id='carePlanChart'></canvas>",
-                  "    </div>",
-                  "  </div>",
-                  "</div>",
-                  "",
-                  "<script src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js'></script>",
-                  "<script>",
-                  "  pm.getData(function(err, value) {",
-                  "    var ctx = document.getElementById('carePlanChart').getContext('2d');",
-                  "    var labels = value.chartLabels;",
-                  "    var data = value.chartData;",
-                  "    ",
-                  "    new Chart(ctx, {",
-                  "      type: 'bar',",
-                  "      data: {",
-                  "        labels: labels,",
-                  "        datasets: [{",
-                  "          label: 'Instructions per Time Slot',",
-                  "          data: data,",
-                  "          backgroundColor: [",
-                  "            'rgba(102, 126, 234, 0.8)',",
-                  "            'rgba(118, 75, 162, 0.8)',",
-                  "            'rgba(255, 159, 64, 0.8)',",
-                  "            'rgba(75, 192, 192, 0.8)',",
-                  "            'rgba(153, 102, 255, 0.8)'",
-                  "          ],",
-                  "          borderColor: [",
-                  "            'rgba(102, 126, 234, 1)',",
-                  "            'rgba(118, 75, 162, 1)',",
-                  "            'rgba(255, 159, 64, 1)',",
-                  "            'rgba(75, 192, 192, 1)',",
-                  "            'rgba(153, 102, 255, 1)'",
-                  "          ],",
-                  "          borderWidth: 2",
-                  "        }]",
-                  "      },",
-                  "      options: {",
-                  "        responsive: true,",
-                  "        maintainAspectRatio: false,",
-                  "        legend: { display: false },",
-                  "        title: {",
-                  "          display: true,",
-                  "          text: 'Care Plan Tasks by Time of Day'",
-                  "        },",
-                  "        scales: {",
-                  "          yAxes: [{",
-                  "            ticks: { beginAtZero: true, stepSize: 1 },",
-                  "            scaleLabel: { display: true, labelString: 'Number of Tasks' }",
-                  "          }],",
-                  "          xAxes: [{",
-                  "            scaleLabel: { display: true, labelString: 'Time Slot' }",
-                  "          }]",
-                  "        }",
-                  "      }",
-                  "    });",
-                  "  });",
-                  "</script>",
-                  "`;",
-                  "",
-                  "function constructVisualizerPayload() {",
-                  "    var response = pm.response.json();",
-                  "    var carePlanItems = [];",
-                  "    var chartLabels = [];",
-                  "    var chartData = [];",
-                  "    ",
-                  "    // Parse the simplified_plan JSON string",
-                  "    try {",
-                  "        var simplifiedPlan = JSON.parse(response.simplified_plan);",
-                  "        var carePlan = simplifiedPlan.care_plan || simplifiedPlan;",
-                  "        ",
-                  "        // Extract time slots and instructions",
-                  "        for (var key in carePlan) {",
-                  "            if (carePlan.hasOwnProperty(key)) {",
-                  "                var instructions = carePlan[key];",
-                  "                var instructionText = typeof instructions === 'string' ? instructions : JSON.stringify(instructions);",
-                  "                carePlanItems.push({",
-                  "                    timeSlot: key,",
-                  "                    instructions: instructionText",
-                  "                });",
-                  "                chartLabels.push(key);",
-                  "                // Count tasks (split by periods or commas)",
-                  "                var taskCount = instructionText.split(/[.,;]/).filter(function(t) { return t.trim().length > 0; }).length;",
-                  "                chartData.push(taskCount);",
-                  "            }",
-                  "        }",
-                  "    } catch (e) {",
-                  "        carePlanItems.push({",
-                  "            timeSlot: 'Raw Plan',",
-                  "            instructions: response.simplified_plan || 'No care plan available'",
-                  "        });",
-                  "        chartLabels.push('Raw Plan');",
-                  "        chartData.push(1);",
-                  "    }",
-                  "    ",
-                  "    return {",
-                  "        patient_id: response.patient_id || 'N/A',",
-                  "        status: response.status || 'Unknown',",
-                  "        isSuccess: (response.status || '').toLowerCase().indexOf('success') !== -1,",
-                  "        follow_up_reminder: response.follow_up_reminder || 'No follow-up specified',",
-                  "        carePlanItems: carePlanItems,",
-                  "        chartLabels: chartLabels,",
-                  "        chartData: chartData",
-                  "    };",
-                  "}",
-                  "",
-                  "pm.visualizer.set(template, constructVisualizerPayload());"
-                ],
-                "type": "text/javascript"
-              }
+          "response": []
+        },
+        {
+          "name": "New Request",
+          "id": "2a3d9d15-3eaf-47da-a6bd-4e3eee1f2e6e",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": ""
             }
-          ],
+          },
           "response": []
         }
       ],
-      "id": "384e92cd-2978-485d-bf94-5ea7231e84e8"
+      "id": "7ac14ee1-7758-4f01-b64a-2bef5919f3d3"
     }
   ]
 }

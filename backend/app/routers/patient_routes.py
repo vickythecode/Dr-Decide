@@ -2,10 +2,12 @@ import uuid
 import boto3
 import os
 from boto3.dynamodb.conditions import Attr, Key
+from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends
-from app.models import AppointmentRequest, TaskUpdate
+from app.models import AppointmentRequest, PatientProfileSetup, TaskUpdate
 from app.services.auth import require_role 
 from typing import Optional
+from datetime import datetime
 
 router = APIRouter(prefix="/api/patient", tags=["Patient Operations"])
 
@@ -15,6 +17,7 @@ care_plans_table = dynamodb.Table('DrDecideCarePlans')
 appointments_table = dynamodb.Table('DrDecideAppointments')
 notifications_table = dynamodb.Table('DrDecideNotifications')
 doctors_table = dynamodb.Table('DrDecideDoctors')
+patients_table = dynamodb.Table('DrDecidePatients')
 
 @router.get("/my-appointments")
 async def get_patient_appointments(
@@ -155,44 +158,116 @@ async def get_notifications(
         raise HTTPException(status_code=500, detail="Could not retrieve notifications.")
     from typing import Optional
 
+
+
+
 @router.get("/doctors")
-async def search_doctors(
+async def search_nearby_doctors(
     specialty: Optional[str] = None,
-    clinic_name: Optional[str] = None,
+    city: Optional[str] = None,
+    pincode: Optional[str] = None,
     current_user: dict = Depends(require_role("Patient"))
 ):
     """
-    Returns a list of doctors. Allows patients to search by specialty or clinic.
+    Smart Search: Finds doctors based on specialty, city, or exact pincode.
     """
     try:
-        # 1. Grab everyone from the directory
+        # Start with a base scan (In a production app, we would use a Global Secondary Index here)
         response = doctors_table.scan()
         all_doctors = response.get('Items', [])
-        
-        # 2. Filter by Specialty (if the patient typed one in the search bar)
+
+        # Apply our "Smart Filters" in Python
+        filtered_doctors = all_doctors
+
+        # 1. Filter by Specialty (if provided)
         if specialty:
-            # We use .lower() to make the search case-insensitive!
-            all_doctors = [doc for doc in all_doctors if doc.get('specialty', '').lower() == specialty.lower()]
+            filtered_doctors = [doc for doc in filtered_doctors if doc.get('specialty', '').lower() == specialty.lower()]
             
-        # 3. Filter by Clinic/Hospital Name (if the patient chose one)
-        if clinic_name:
-            all_doctors = [doc for doc in all_doctors if clinic_name.lower() in doc.get('clinic_name', '').lower()]
+        # 2. Filter by City (if provided)
+        if city:
+            filtered_doctors = [doc for doc in filtered_doctors if doc.get('city', '').lower() == city.lower()]
             
-        # 4. Clean up the data (don't send private DB info to the frontend, just what they need to book)
-        safe_doctor_list = []
-        for doc in all_doctors:
-            safe_doctor_list.append({
+        # 3. Filter by Pincode (if provided - this is the most accurate "nearby" check)
+        if pincode:
+            filtered_doctors = [doc for doc in filtered_doctors if doc.get('pincode', '') == pincode]
+
+        # Clean up the output so we don't send raw database data to the frontend
+        clean_results = []
+        for doc in filtered_doctors:
+            clean_results.append({
                 "doctor_id": doc.get("doctor_id"),
-                "doctor_name": doc.get("doctor_name", "Unknown Doctor"),
-                "specialty": doc.get("specialty", "General"),
-                "clinic_name": doc.get("clinic_name", "Main Hospital")
+                "doctor_name": doc.get("doctor_name"),
+                "specialty": doc.get("specialty"),
+                "clinic_name": doc.get("clinic_name"),
+                "location": f"{doc.get('city', '').title()}, {doc.get('pincode', '')}"
             })
-            
+
         return {
-            "total_found": len(safe_doctor_list),
-            "doctors": safe_doctor_list
+            "results_found": len(clean_results),
+            "doctors": clean_results
         }
-        
+
     except Exception as e:
-        print(f"DynamoDB Error: {e}")
-        raise HTTPException(status_code=500, detail="Could not fetch the doctor directory.")
+        print(f"Doctor Search Error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to search for doctors.")
+
+@router.post("/setup-profile")
+async def setup_patient_profile(
+    profile_data: PatientProfileSetup,
+    current_user: dict = Depends(require_role("Patient"))
+):
+    """
+    Saves the patient's personal and medical details after their first login.
+    """
+    patient_id = current_user.get('sub')
+    patient_email = current_user.get('email') or current_user.get('cognito:username') or current_user.get('username')
+
+    record = {
+        'patient_id': patient_id,
+        'email': patient_email,
+        'full_name': profile_data.full_name,
+        'age': profile_data.age,
+        'gender': profile_data.gender,
+        'phone_number': profile_data.phone_number,
+        'blood_group': profile_data.blood_group,
+        'emergency_contact': profile_data.emergency_contact,
+        'known_allergies': profile_data.known_allergies,
+        'profile_status': 'Complete',
+        'updated_at': datetime.utcnow().isoformat()
+    }
+
+    try:
+        patients_table.put_item(Item=record)
+        return {
+            "message": "Patient profile completed successfully!", 
+            "profile": record
+        }
+    except Exception as e:
+        print(f"Profile Setup Error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save patient profile.")
+
+
+@router.get("/profile")
+async def get_patient_profile(
+    current_user: dict = Depends(require_role("Patient"))
+):
+    """
+    Fetches the patient's profile. Frontend can use this to check if the profile is complete.
+    """
+    patient_id = current_user.get('sub')
+    
+    try:
+        response = patients_table.get_item(Key={'patient_id': patient_id})
+        
+        if 'Item' in response:
+            return response['Item']
+        else:
+            # If no item is found, the profile isn't set up yet!
+            return {
+                "message": "Profile not set up yet.", 
+                "profile_status": "Incomplete"
+            }
+            
+    except Exception as e:
+        print(f"Profile Fetch Error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch patient profile.")

@@ -18,6 +18,7 @@ care_plans_table = dynamodb.Table('DrDecideCarePlans')
 appointments_table = dynamodb.Table('DrDecideAppointments')
 notifications_table = dynamodb.Table('DrDecideNotifications')
 doctors_table = dynamodb.Table('DrDecideDoctors')
+patients_table = dynamodb.Table('DrDecidePatients')
 
 # Initialize Bedrock (AI) and SNS (Text Messages) Clients
 bedrock_client = boto3.client('bedrock-runtime', region_name=os.getenv("AWS_DEFAULT_REGION", "us-east-1"))
@@ -25,32 +26,31 @@ sns_client = boto3.client('sns', region_name=os.getenv("AWS_DEFAULT_REGION", "us
 
 @router.post("/setup-profile")
 async def setup_doctor_profile(
-    profile: DoctorProfileSetup,
+    profile_data: DoctorProfileSetup, # Make sure this is imported at the top!
     current_user: dict = Depends(require_role("Doctor"))
 ):
-    """
-    Called once when a new doctor logs in for the first time to add them to the directory.
-    """
-    # Grab their secure, permanent AWS ID and email
     doctor_id = current_user.get('sub')
     doctor_email = current_user.get('email') or current_user.get('cognito:username') or current_user.get('username')
-    
-    # Construct the record for the Directory Table
+
     record = {
-        "doctor_id": doctor_id, 
-        "doctor_email": doctor_email,
-        "doctor_name": profile.doctor_name,
-        "specialty": profile.specialty,
-        "clinic_name": profile.clinic_name
+        'doctor_id': doctor_id,
+        'email': doctor_email,
+        'doctor_name': profile_data.doctor_name,
+        'specialty': profile_data.specialty,
+        'clinic_name': profile_data.clinic_name,
+        # Save the new location fields
+        'city': profile_data.city.lower(), # Lowercase for easier searching
+        'state': profile_data.state,
+        'pincode': profile_data.pincode,
+        'profile_status': 'Complete'
     }
-    
+
     try:
         doctors_table.put_item(Item=record)
-        return {"message": "Profile setup complete! You are now listed in the directory.", "profile": record}
+        return {"message": "Doctor profile completed!", "profile": record}
     except Exception as e:
-        print(f"DynamoDB Error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to save doctor profile.")
-    
+        print(f"Doctor Profile Setup Error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save doctor profile.")   
 
 @router.get("/my-appointments")
 async def get_doctor_appointments(
@@ -367,23 +367,22 @@ async def get_my_patients_and_plans(
 ):
     """
     NEW FEATURE: Returns a list of all patients under this doctor's care, 
-    along with their most recent AI Care Plan.
+    along with their most recent AI Care Plan AND their real profile data (Name, Phone).
     """
     doctor_id = current_user.get('sub')
     doctor_email = current_user.get('email') or current_user.get('cognito:username') or current_user.get('username')
     
     try:
-        # Scan the care plans table for this doctor's patients
+        # 1. Scan the care plans table for this doctor's patients
         response = care_plans_table.scan(
             FilterExpression=Attr('doctor_email').eq(doctor_email) | Attr('doctor_id').eq(doctor_id)
         )
         all_care_plans = response.get('Items', [])
         
-        # Group by patient to only get their LATEST plan
+        # 2. Group by patient to only get their LATEST plan
         patients_dict = {}
         for plan in all_care_plans:
             pid = plan.get('patient_id')
-            # If patient isn't in dict yet, or if this plan is newer (assuming chronological scanning/sorting)
             patients_dict[pid] = {
                 "patient_id": pid,
                 "latest_appointment_id": plan.get('appointment_id'),
@@ -392,7 +391,22 @@ async def get_my_patients_and_plans(
                 "status": plan.get('status')
             }
             
-        # Convert dictionary back to a list for the frontend
+        # 3. GO FETCH THE REAL NAMES FROM THE PATIENTS TABLE!
+        for pid in patients_dict:
+            try:
+                patient_profile = patients_table.get_item(Key={'patient_id': pid})
+                if 'Item' in patient_profile:
+                    # Inject the real name and phone number into the dictionary
+                    patients_dict[pid]['patient_name'] = patient_profile['Item'].get('full_name', 'Unknown')
+                    patients_dict[pid]['phone_number'] = patient_profile['Item'].get('phone_number', 'N/A')
+                    patients_dict[pid]['blood_group'] = patient_profile['Item'].get('blood_group', 'Unknown')
+                else:
+                    patients_dict[pid]['patient_name'] = 'Unknown (Profile not setup)'
+            except Exception as lookup_err:
+                print(f"Error looking up patient {pid}: {lookup_err}")
+                patients_dict[pid]['patient_name'] = 'Error fetching name'
+
+        # 4. Convert dictionary back to a list for the frontend
         patient_list = list(patients_dict.values())
         
         return {
@@ -403,3 +417,28 @@ async def get_my_patients_and_plans(
     except Exception as e:
         print(f"Patient Directory Error: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve patient list.")
+    
+@router.get("/profile")
+async def get_doctor_profile(
+    current_user: dict = Depends(require_role("Doctor"))
+):
+    """
+    Fetches the doctor's profile. Frontend can use this to check if the profile is complete.
+    """
+    doctor_id = current_user.get('sub')
+    
+    try:
+        response = doctors_table.get_item(Key={'doctor_id': doctor_id})
+        
+        if 'Item' in response:
+            return response['Item']
+        else:
+            # If no item is found, the profile isn't set up yet!
+            return {
+                "message": "Profile not set up yet.", 
+                "profile_status": "Incomplete"
+            }
+            
+    except Exception as e:
+        print(f"Doctor Profile Fetch Error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch doctor profile.")
