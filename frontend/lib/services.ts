@@ -82,8 +82,36 @@ export async function doctorDashboardStats() {
 }
 
 export async function doctorAppointments() {
-  const { data } = await api.get("/api/doctor/my-appointments");
-  return data as { total_appointments: number; schedule: DoctorAppointmentItem[] };
+  // 1. Fetch both API routes simultaneously for maximum speed
+  const [appointmentsRes, patientsRes] = await Promise.all([
+    api.get("/api/doctor/my-appointments"),
+    api.get("/api/doctor/my-patients")
+  ]);
+
+  const apptData = appointmentsRes.data;
+  const patientData = patientsRes.data;
+
+  // 2. Create a fast lookup map for patient names: { "123-abc": "John Doe" }
+  const patientNameMap: Record<string, string> = {};
+  
+  if (patientData && patientData.patients) {
+    patientData.patients.forEach((patient: any) => {
+      patientNameMap[patient.patient_id] = patient.patient_name;
+    });
+  }
+
+  // 3. Loop through the appointments and inject the patient's real name
+  const enrichedSchedule = apptData.schedule.map((appt: any) => ({
+    ...appt,
+    // Add the name if we found it, otherwise fallback to "Unknown"
+    patient_name: patientNameMap[appt.patient_id] || "Unknown Patient"
+  }));
+
+  // 4. Return the enriched data matching your TypeScript interface
+  return {
+    total_appointments: apptData.total_appointments,
+    schedule: enrichedSchedule
+  } as { total_appointments: number; schedule: DoctorAppointmentItem[] };
 }
 
 export async function doctorPatients() {

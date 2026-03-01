@@ -70,7 +70,7 @@ export default function DoctorAppointmentsPage() {
                 <tr key={`${idx}-${String(row.appointment_id || idx)}`}>
                   <td>{String(row.appointment_id || "")}</td>
                   <td>{formatDateTimeIST(String(row.appointment_date || ""))}</td>
-                  <td>{formatNameWithId(resolvedPatientName, patientId, "")}</td>
+                  <td>{formatNameWithId(resolvedPatientName, "")}</td>
                   <td>{String(row.reason || "")}</td>
                   <td>{String(row.status || "")}</td>
                   <td>
@@ -115,7 +115,7 @@ export default function DoctorAppointmentsPage() {
                 <tr key={`${idx}-${String(row.appointment_id || idx)}`}>
                   <td>{String(row.appointment_id || "")}</td>
                   <td>{formatDateTimeIST(String(row.appointment_date || ""))}</td>
-                  <td>{formatNameWithId(resolvedPatientName, patientId, "")}</td>
+                  <td>{formatNameWithId(resolvedPatientName, "")}</td>
                   <td>{String(row.reason || "")}</td>
                   <td>{String(row.status || "")}</td>
                   <td className="">

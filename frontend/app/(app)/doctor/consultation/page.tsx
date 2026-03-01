@@ -14,8 +14,11 @@ function DoctorConsultationForm() {
   const { pushToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [patientLabel, setPatientLabel] = useState("");
+  
+  // 1. Added patient_name to the initial state
   const [form, setForm] = useState({
     patient_id: "",
+    patient_name: "", 
     appointment_id: "",
     phone_number: "",
     medical_history: "",
@@ -28,19 +31,27 @@ function DoctorConsultationForm() {
     const patientId = searchParams.get("patient_id") || "";
     const patientName = searchParams.get("patient_name") || "";
     const appointmentId = searchParams.get("appointment_id") || "";
+    
     if (!patientId && !appointmentId) return;
+    
     setPatientLabel(formatNameWithId(patientName, patientId, ""));
     setForm((prev) => ({
       ...prev,
       patient_id: patientId || prev.patient_id,
       appointment_id: appointmentId || prev.appointment_id,
+      patient_name: patientName || prev.patient_name, // 2. Fixed typo here
     }));
   }, [searchParams]);
 
   async function submit() {
     setLoading(true);
     try {
-      await doctorConsultation(form);
+      // 3. Destructure form to separate patient_name from the actual payload
+      const { patient_name, ...apiPayload } = form;
+      
+      // Send the clean payload to FastAPI (which contains patient_id but NOT patient_name)
+      await doctorConsultation(apiPayload);
+      
       pushToast("Consultation submitted successfully", "success");
     } catch {
       pushToast("Failed to submit consultation", "error");
@@ -52,47 +63,56 @@ function DoctorConsultationForm() {
   return (
     <Card title="Submit Consultation">
       <div className="space-y-3">
-        {patientLabel && <p className="text-sm muted">Selected patient: {patientLabel}</p>}
+        {patientLabel && <p className="text-sm-b muted">Selected patient </p>}
+        
+        {/* 4. Bound to form.patient_name and disabled so it's read-only */}
         <Input
-          value={form.patient_id}
-          onChange={(e) => setForm((prev) => ({ ...prev, patient_id: e.target.value }))}
-          placeholder="Patient ID"
+          value={form.patient_name}
+          disabled
+          placeholder="Patient Name"
         />
+        
         <Input
           value={form.appointment_id}
-          onChange={(e) => setForm((prev) => ({ ...prev, appointment_id: e.target.value }))}
+          disabled
           placeholder="Appointment ID"
         />
+        
         <Input
           value={form.phone_number}
           onChange={(e) => setForm((prev) => ({ ...prev, phone_number: e.target.value }))}
-          placeholder="Phone Number"
+          placeholder="Patient Phone Number (For SMS Alert)"
         />
+        
         <textarea
           className="input min-h-24"
           value={form.medical_history}
           onChange={(e) => setForm((prev) => ({ ...prev, medical_history: e.target.value }))}
           placeholder="Medical history"
         />
+        
         <textarea
           className="input min-h-24"
           value={form.current_examination}
           onChange={(e) => setForm((prev) => ({ ...prev, current_examination: e.target.value }))}
-          placeholder="Current examination"
+          placeholder="Current examination (Type fast, AI will translate!)"
         />
+        
         <textarea
           className="input min-h-24"
           value={form.medicines_prescribed}
           onChange={(e) => setForm((prev) => ({ ...prev, medicines_prescribed: e.target.value }))}
           placeholder="Medicines prescribed"
         />
+        
         <textarea
           className="input min-h-24"
           value={form.follow_up_details}
           onChange={(e) => setForm((prev) => ({ ...prev, follow_up_details: e.target.value }))}
           placeholder="Follow up details"
         />
-        <Button loading={loading} onClick={submit}>Submit Consultation</Button>
+        
+        <Button loading={loading} onClick={submit}>Generate AI Care Plan</Button>
       </div>
     </Card>
   );
