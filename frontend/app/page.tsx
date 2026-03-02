@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export default function Home() {
   return (
@@ -6,10 +7,20 @@ export default function Home() {
       <div className="mx-auto grid max-w-[1200px] gap-6 lg:grid-cols-[1.2fr_1fr]">
         <section className="home-hero panel p-6 md:p-8">
           <p className="pill inline-block">Smart Care Coordination</p>
-          <h1 className="title mt-4 text-4xl leading-tight md:text-5xl">
-            Dr. Decide
+          <h1 className="title mt-4 text-4xl leading-tight md:text-5xl item-center">
+          
+            <span className=" inline-flex items-center gap-3">
+              <Image 
+                src="/logo.png" 
+                alt="Dr. Decide Logo" 
+                width={100} 
+                height={100} 
+                className="object-contain" 
+              />
+              Unified Hospital Workflow
+            </span>
             <br />
-            Unified Hospital Workflow
+            
           </h1>
           <p className="muted mt-4 max-w-[560px] text-base">
             Connect patients, doctors, and reception staff in one portal for appointments, care plans, queue handling,

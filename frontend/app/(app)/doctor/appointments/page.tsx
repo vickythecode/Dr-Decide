@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import Input from "@/components/ui/Input";
 import { useToast } from "@/context/ToastContext";
 import { doctorAppointments, updateAppointmentStatus } from "@/lib/services";
 import { DoctorAppointmentItem } from "@/types";
@@ -14,11 +15,26 @@ export default function DoctorAppointmentsPage() {
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<DoctorAppointmentItem[]>([]);
 
-  // Filter appointments for today
+  // Filter States for the "All Appointments" table
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+
+  // Always strictly show TODAY's appointments here, regardless of filter state
   const todayRows = useMemo(() => {
     const todayIst = nowISTDateKey();
     return rows.filter((x) => toISTDateKey(x.appointment_date) === todayIst);
   }, [rows]);
+
+  // Apply filters ONLY to the main "All Appointments" list
+  const filteredAllRows = useMemo(() => {
+    return rows.filter((row) => {
+      const status = String(row.status || "Scheduled");
+      const matchesStatus = statusFilter === "All" || status === statusFilter;
+      const matchesSearch = row.appointment_id?.toLowerCase().includes(searchQuery.toLowerCase()) || false;
+      
+      return matchesStatus && matchesSearch;
+    });
+  }, [rows, searchQuery, statusFilter]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -36,7 +52,6 @@ export default function DoctorAppointmentsPage() {
     load();
   }, [load]);
 
-  // --- UPGRADED: Generic Status Update Function ---
   const handleStatusUpdate = async (appointmentId: string, newStatus: string) => {
     if (!window.confirm(`Are you sure you want to mark this appointment as ${newStatus}?`)) return;
     
@@ -52,7 +67,6 @@ export default function DoctorAppointmentsPage() {
     }
   };
 
-  // --- NEW: Dynamic Color Helper for Status Pills ---
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Cancelled":
@@ -70,7 +84,6 @@ export default function DoctorAppointmentsPage() {
     }
   };
 
-  // Helper function to render Action buttons based on status
   const renderActions = (row: DoctorAppointmentItem, patientId: string, patientName: string) => {
     const status = String(row.status || "Scheduled");
     const appointmentId = String(row.appointment_id || "");
@@ -89,7 +102,6 @@ export default function DoctorAppointmentsPage() {
           Consult
         </Link>
         
-        {/* Added No-Show Button */}
         <button
           onClick={() => handleStatusUpdate(appointmentId, "No-Show")}
           className="rounded-2xl border border-orange-200 bg-orange-50 text-orange-600 px-3 py-1.5 text-xs font-medium hover:bg-orange-100 transition-colors whitespace-nowrap"
@@ -107,8 +119,11 @@ export default function DoctorAppointmentsPage() {
     );
   };
 
+  const selectClassName = "flex h-10 w-full md:w-48 rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)]";
+
   return (
     <div className="space-y-4">
+      {/* STATIC TOP CARD: Always shows today's agenda */}
       <Card title="Today Appointments" action={<Button loading={loading} onClick={load}>Refresh</Button>}>
         <div className="overflow-x-auto">
           <table className="table w-full text-left">
@@ -135,7 +150,6 @@ export default function DoctorAppointmentsPage() {
                   <td className="p-3 text-sm font-medium">{patientName}</td>
                   <td className="p-3 text-sm">{String(row.reason || "")}</td>
                   <td className="p-3 text-sm">
-                    {/* FIXED: One clean, dynamically colored span! */}
                     <span className={`pill border ${getStatusColor(status)}`}>
                       {status}
                     </span>
@@ -156,10 +170,34 @@ export default function DoctorAppointmentsPage() {
         </div>
       </Card>
 
+      {/* FILTERABLE BOTTOM CARD: All Historical & Future Appointments */}
       <Card title="All Appointments">
-        <div className="overflow-x-auto">
+        
+        {/* FILTER BAR */}
+        <div className="mb-4 flex flex-col md:flex-row gap-3">
+          <Input
+            placeholder="Search by Appointment ID..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className={selectClassName}
+          >
+            <option value="All">All Statuses</option>
+            <option value="Scheduled">Scheduled</option>
+            <option value="Waiting">Waiting</option>
+            <option value="In-Consultation">In-Consultation</option>
+            <option value="Completed">Completed</option>
+            <option value="Cancelled">Cancelled</option>
+            <option value="No-Show">No-Show</option>
+          </select>
+        </div>
+
+        <div className="overflow-x-auto border border-[var(--border)] rounded-md">
           <table className="table w-full text-left">
-            <thead>
+            <thead className="bg-[var(--muted)]/10 border-b border-[var(--border)]">
               <tr className="border-b border-[var(--border)]">
                 <th className="p-3">Appointment</th>
                 <th className="p-3">Date</th>
@@ -170,7 +208,7 @@ export default function DoctorAppointmentsPage() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, idx) => {
+              {filteredAllRows.map((row, idx) => {
                 const patientId = String(row.patient_id || "");
                 const patientName = String(row.patient_name || "Unknown Patient");
                 const status = String(row.status || "Scheduled");
@@ -182,7 +220,6 @@ export default function DoctorAppointmentsPage() {
                   <td className="p-3 text-sm font-medium">{patientName}</td>
                   <td className="p-3 text-sm">{String(row.reason || "")}</td>
                   <td className="p-3 text-sm">
-                    {/* FIXED: One clean, dynamically colored span! */}
                     <span className={`pill border ${getStatusColor(status)}`}>
                       {status}
                     </span>
@@ -193,9 +230,13 @@ export default function DoctorAppointmentsPage() {
                 </tr>
                 );
               })}
-              {!rows.length && (
+              {!filteredAllRows.length && (
                 <tr>
-                  <td colSpan={6} className="p-6 text-center text-[var(--muted)]">No appointments found.</td>
+                  <td colSpan={6} className="p-6 text-center text-sm text-[var(--muted)]">
+                    {rows.length === 0 
+                      ? "No appointments found." 
+                      : "No appointments match your search or filter."}
+                  </td>
                 </tr>
               )}
             </tbody>

@@ -58,7 +58,7 @@ function DoctorConsultationForm() {
       
       pushToast("Consultation submitted successfully!", "success");
       
-      // 3. Optional but recommended: Send the doctor back to their dashboard after a success
+      
       router.push("/doctor/dashboard");
       
     } catch {

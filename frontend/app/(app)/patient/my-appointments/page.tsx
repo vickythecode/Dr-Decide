@@ -1,15 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import Input from "@/components/ui/Input";
 import { patientAppointments } from "@/lib/services";
 import { AppointmentItem } from "@/types";
 import { useToast } from "@/context/ToastContext";
 import { formatDateTimeIST } from "@/lib/datetime";
 import { rememberDoctorName, resolveDoctorName } from "@/lib/identity";
 
-// 1. SIMPLIFIED: Just return the name! No more IDs.
 function displayDoctorName(item: AppointmentItem) {
   const name = item.doctor_name || resolveDoctorName(String(item.doctor_id || ""));
   if (name) return name;
@@ -23,7 +23,6 @@ function displayClinicName(item: AppointmentItem) {
   return item.clinic_name || item.clinic || item.clinic_id || "-";
 }
 
-// 2. ADDED: Consistent color coding for statuses to match the Doctor side!
 const getStatusColor = (status: string) => {
   switch (status) {
     case "Cancelled":
@@ -44,6 +43,10 @@ export default function PatientMyAppointmentsPage() {
   const { pushToast } = useToast();
   const [items, setItems] = useState<AppointmentItem[]>([]);
   const [loading, setLoading] = useState(false);
+  
+  // NEW: State for Search and Filtering
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -66,23 +69,59 @@ export default function PatientMyAppointmentsPage() {
     load();
   }, [load]);
 
+  // NEW: Dynamically filter items based on search query and status selection
+  const filteredItems = useMemo(() => {
+    return items.filter((item) => {
+      const status = String(item.status || "Scheduled");
+      const matchesStatus = statusFilter === "All" || status === statusFilter;
+      const matchesSearch = item.appointment_id?.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      return matchesStatus && matchesSearch;
+    });
+  }, [items, searchQuery, statusFilter]);
+
+  // Consistent Dropdown Styling
+  const selectClassName = "flex h-10 w-full md:w-48 rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)]";
+
   return (
     <Card title="My Appointments" action={<Button loading={loading} onClick={load}>Refresh</Button>}>
-      <div className="overflow-x-auto">
-        {/* MATCHED STYLING: Made the table match the clean UI of the doctor dashboard */}
-        <table className="table w-full text-left">
-          <thead>
-            <tr className="border-b border-[var(--border)]">
-              <th className="p-3">Appointment ID</th>
-              <th className="p-3">Date</th>
-              <th className="p-3">Doctor</th>
-              <th className="p-3">Clinic</th>
-              <th className="p-3">Reason</th>
-              <th className="p-3">Status</th>
+      
+      {/* FILTER BAR SECTION */}
+      <div className="mb-4 flex flex-col md:flex-row gap-3">
+        <Input
+          placeholder="Search by Appointment ID..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className={selectClassName}
+        >
+          <option value="All">All Statuses</option>
+          <option value="Scheduled">Scheduled</option>
+          <option value="Waiting">Waiting</option>
+          <option value="In-Consultation">In-Consultation</option>
+          <option value="Completed">Completed</option>
+          <option value="Cancelled">Cancelled</option>
+          <option value="No-Show">No-Show</option>
+        </select>
+      </div>
+
+      <div className="overflow-x-auto border border-[var(--border)] rounded-md">
+        <table className="table w-full text-left border-collapse">
+          <thead className="bg-[var(--muted)]/10 border-b border-[var(--border)]">
+            <tr>
+              <th className="p-3 text-sm font-semibold">Appointment ID</th>
+              <th className="p-3 text-sm font-semibold">Date</th>
+              <th className="p-3 text-sm font-semibold">Doctor</th>
+              <th className="p-3 text-sm font-semibold">Clinic</th>
+              <th className="p-3 text-sm font-semibold">Reason</th>
+              <th className="p-3 text-sm font-semibold">Status</th>
             </tr>
           </thead>
           <tbody>
-            {items.map((item) => {
+            {filteredItems.map((item) => {
               const status = String(item.status || "Scheduled");
               
               return (
@@ -93,7 +132,6 @@ export default function PatientMyAppointmentsPage() {
                 <td className="p-3 text-sm text-[var(--muted)]">{displayClinicName(item)}</td>
                 <td className="p-3 text-sm">{item.reason}</td>
                 <td className="p-3 text-sm">
-                  {/* Applied the color-coded pill */}
                   <span className={`pill border ${getStatusColor(status)}`}>
                     {status}
                   </span>
@@ -101,9 +139,13 @@ export default function PatientMyAppointmentsPage() {
               </tr>
               );
             })}
-            {!items.length && (
+            {!filteredItems.length && (
               <tr>
-                <td colSpan={6} className="p-6 text-center text-[var(--muted)]">No appointments found.</td>
+                <td colSpan={6} className="p-6 text-center text-sm text-[var(--muted)]">
+                  {items.length === 0 
+                    ? "You haven't booked any appointments yet." 
+                    : "No appointments match your search or filter."}
+                </td>
               </tr>
             )}
           </tbody>

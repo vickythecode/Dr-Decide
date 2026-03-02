@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image"; // 1. IMPORT NEXT/IMAGE
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import Button from "@/components/ui/Button";
@@ -21,8 +22,19 @@ export default function Sidebar() {
 
   return (
     <aside className="panel h-fit p-4 lg:sticky lg:top-4">
-      <p className="title text-lg">Dr. Decide</p>
-      <p className="muted mb-4 text-xs">{role || "Guest"} portal</p>
+      
+     
+      <div className="flex items-center gap-2 mb-3">
+        <Image 
+          src="/logo.png" 
+          alt="Dr. Decide Logo" 
+          width={70}
+          height={70} 
+          className="object-contain" 
+        />
+        <p className="title text-xl font-bold tracking-tight">{role || "Guest"} portal</p>
+      </div>
+      
 
       {role === "Patient" && (
         <nav className="space-y-2">
@@ -58,15 +70,16 @@ export default function Sidebar() {
         </nav>
       )}
 
-      <div className="mt-6 rounded-xl bg-[#f1f8fa] p-3">
-        <p className="text-xs font-semibold text-[var(--muted)]">Logged in as</p>
-        <p className="title text-base">{role || "Guest"}</p>
+      {/* USER INFO & LOGOUT */}
+      <div className="mt-6 rounded-xl bg-[#f1f8fa] p-3 border border-[#dceff1]">
+        <p className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wide">Logged in as</p>
+        <p className="title text-base mt-0.5">{role || "Guest"}</p>
       </div>
 
       <div className="mt-3 border-t border-[var(--border)] pt-3">
         <Button
           variant="secondary"
-          className="w-full"
+          className="w-full text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-200 transition-colors"
           onClick={() => {
             logout();
             router.push("/auth/login");

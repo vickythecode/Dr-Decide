@@ -8,7 +8,6 @@ import { useToast } from "@/context/ToastContext";
 import { getAuthSubject, rememberDoctorName } from "@/lib/identity";
 import { doctorSetupProfile } from "@/lib/services";
 
-// Pre-defined specialties to keep your database search perfectly clean!
 const SPECIALTY_OPTIONS = [
   "General Physician",
   "Cardiologist",
@@ -37,7 +36,6 @@ export default function DoctorProfilePage() {
   const [loading, setLoading] = useState(false);
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
 
-  // --- THE MAGIC PINCODE API CALL ---
   const handlePincodeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     
@@ -118,14 +116,12 @@ export default function DoctorProfilePage() {
     }
   }
 
-  // Tailwind class to perfectly match your Input component's styling
   const selectClassName = "flex h-10 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm ring-offset-[var(--background)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
 
   return (
     <Card title="Doctor Profile Setup">
       <div className="space-y-4">
         
-        {/* Professional Details Section */}
         <div className="space-y-3">
           <Input value={doctorName} onChange={(e) => setDoctorName(e.target.value)} placeholder="Full Name (e.g. Dr. John Doe)" />
           
@@ -163,7 +159,7 @@ export default function DoctorProfilePage() {
               value={city} 
               onChange={(e) => setCity(e.target.value)} 
               placeholder="City" 
-              disabled // Locks the input to ensure perfectly formatted backend data
+              disabled 
               className="bg-[var(--muted)]/20 cursor-not-allowed"
             />
             <Input 
