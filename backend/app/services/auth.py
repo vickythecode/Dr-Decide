@@ -1,6 +1,7 @@
 import urllib.request
 import os
 import json
+from app.models import UserConfirm
 import boto3
 from botocore.exceptions import ClientError
 from jose import jwk, jwt
@@ -34,9 +35,10 @@ def sign_up_user(email, password, role):
                 {'Name': 'custom:role', 'Value': role}
             ]
         )
-        return response
-    except ClientError as e:
-        return {"error": e.response['Error']['Message']}
+        # We return a message telling the frontend to redirect to the verification screen
+        return {"message": "Sign up successful! Please check your email for the verification code."}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 def login_user(email, password):
     try:
@@ -124,3 +126,18 @@ def require_role(required_role: str):
         return claims
         
     return role_checker
+def confirm_sign_up(email: str, code: str):
+    """
+    Business Logic: Talks directly to AWS Cognito to verify the code.
+    """
+    try:
+        response = cognito_client.confirm_sign_up(
+            ClientId=os.getenv("COGNITO_APP_CLIENT_ID"),
+            Username=email,
+            ConfirmationCode=code
+        )
+        return response
+    except Exception as e:
+        print(f"AWS Verification Error: {e}")
+        # We raise the HTTP exception here so the router can just catch it seamlessly
+        raise HTTPException(status_code=400, detail="Invalid or expired verification code.")

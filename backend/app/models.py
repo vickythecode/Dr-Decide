@@ -60,3 +60,6 @@ class PatientProfileSetup(BaseModel):
     city: str
     state: str
     pincode: str
+class UserConfirm(BaseModel):
+    email: str
+    code: str

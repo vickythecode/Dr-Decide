@@ -170,3 +170,11 @@ export async function hospitalQueue() {
   const { data } = await api.get("/api/hospital/queue-status");
   return data as { current_queue: Array<Record<string, unknown>> };
 }
+export async function verifyEmail(email: string, code: string) {
+  // We send the email and the 6-digit code to the FastAPI backend route we just built!
+  const { data } = await api.post("/api/auth/confirm", {
+    email,
+    code,
+  });
+  return data;
+}

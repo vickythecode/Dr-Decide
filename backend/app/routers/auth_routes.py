@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
-from app.models import UserLogin, UserSignUp
-from app.services.auth import sign_up_user, login_user
+import os
+from app.models import UserLogin, UserSignUp, UserConfirm
+from app.services.auth import sign_up_user, login_user, confirm_sign_up
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -22,3 +23,13 @@ async def login(user: UserLogin):
         "access_token": response['AccessToken'],
         "id_token": response['IdToken']
     }
+@router.post("/confirm")
+async def confirm_signup(user_data: UserConfirm):
+    """
+    Route Logic: Handles the incoming HTTP request and returns the JSON response.
+    """
+    # 1. Call the service function. It handles all the heavy lifting!
+    confirm_sign_up(user_data.email, user_data.code)
+    
+    # 2. Return the clean HTTP response
+    return {"message": "Email verified successfully! You can now log in."}

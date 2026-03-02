@@ -32,14 +32,19 @@ export default function AuthForm({ mode, fixedRole }: { mode: Mode; fixedRole?: 
   const roleOptions: Role[] =
     mode === "signup" ? (["Patient", "Doctor"] as Role[]) : (["Patient", "Doctor", "Receptionist"] as Role[]);
 
-  async function handleSubmit(e: React.FormEvent) {
+ async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     try {
       if (mode === "signup") {
         await signup({ email, password, role });
-        pushToast("Account created. Please login.", "success");
-        router.push(fixedRole ? `/auth/login/${roleToSlug(role)}` : "/auth/login");
+        
+        // --- 1. CHANGE THE TOAST MESSAGE ---
+        pushToast("Success! Please check your email for the code.", "success");
+        
+        // --- 2. UPDATE THE REDIRECT ROUTE ---
+        router.push(`/auth/verify-email?email=${encodeURIComponent(email)}&role=${roleToSlug(role)}`);
+        
       } else {
         const res = await login({ email, password });
         const token = res.id_token || res.access_token;
@@ -58,7 +63,6 @@ export default function AuthForm({ mode, fixedRole }: { mode: Mode; fixedRole?: 
       setLoading(false);
     }
   }
-
   return (
     <Card title={`Dr. Decide ${mode === "login" ? "Login" : "Sign Up"}`}>
       <p className="muted mb-4 text-sm">
