@@ -106,7 +106,7 @@ export default function PatientCarePlanPage() {
               className="flex items-center justify-between rounded-lg border border-[var(--border)] px-3 py-2"
             >
               <p className="text-sm">
-                {task.done ? "[x]" : "[ ]"} {task.title}
+                {task.done ? "[x]" : ""} {task.title}
               </p>
               <Button
                 className="px-3 py-1 text-xs"
