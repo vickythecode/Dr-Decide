@@ -9,6 +9,22 @@ import { doctorAppointments, doctorDashboardStats, doctorPatients } from "@/lib/
 import { DoctorAppointmentItem, DoctorDashboardResponse, DoctorPatientsItem } from "@/types";
 import { formatDateTimeIST, nowISTDateKey, toISTDateKey } from "@/lib/datetime";
 
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case "Cancelled":
+    case "No-Show":
+      return "bg-red-100 text-red-700 border-red-200";
+    case "Completed":
+      return "bg-green-100 text-green-700 border-green-200";
+    case "In-Consultation":
+      return "bg-blue-100 text-blue-700 border-blue-200";
+    case "Waiting":
+      return "bg-yellow-100 text-yellow-800 border-yellow-200";
+    default:
+      return "bg-gray-100 text-gray-700 border-gray-200"; 
+  }
+};
+
 export default function DoctorDashboardPage() {
   const { pushToast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -26,8 +42,6 @@ export default function DoctorDashboardPage() {
         doctorPatients(),
         doctorAppointments(),
       ]);
-      
-      // Removed all the caching .forEach loops! Just map the data directly.
       
       setStats(dashboardRes);
       setDailyLimit(dashboardRes.metrics.today_appointments_limit);
@@ -102,27 +116,46 @@ export default function DoctorDashboardPage() {
         <Card title="Upcoming Appointments (Top 5)" action={<Button loading={loading} onClick={load}>Refresh</Button>}>
           <div className="space-y-2">
             {todaysAppointments.map((row, idx) => {
-              // Extract the name natively
               const patientName = String(row.patient_name || "Unknown Patient");
+              const status = String(row.status || "Scheduled");
               
               return (
               <div key={`${row.patient_id}-${idx}`} className="rounded-lg border border-[var(--border)] bg-[#f6fbfc] px-3 py-2 text-sm">
                 <div className="flex items-center justify-between gap-2">
-                  <span>
-                    {/* Fixed the string syntax so it correctly prints the variable! */}
+                  <span className="truncate">
                     {formatDateTimeIST(String(row.appointment_date))} - <span className="font-medium">{patientName}</span> ({String(row.reason)})
+                    {/* FIXED: Gently inline status pill to prevent layout shifting */}
+                    <span className={`ml-2 pill border px-2 py-0.5 text-[10px] ${getStatusColor(status)}`}>
+                      {status}
+                    </span>
                   </span>
-                  <Link
-                    className="rounded-2xl bg-[#0f6963] text-white px-3 py-1.5 text-xs hover:bg-[#16a299] transition-colors whitespace-nowrap"
-                    href={`/doctor/consultation?appointment_id=${encodeURIComponent(String(row.appointment_id || ""))}&patient_id=${encodeURIComponent(String(row.patient_id || ""))}&patient_name=${encodeURIComponent(patientName)}`}
-                  >
-                    Consult
-                  </Link>
+                  
+                  {/* Keep the tight Consult button styling */}
+                  {status !== "Cancelled" && status !== "Completed" && status !== "No-Show" ? (
+                    <Link
+                      className="rounded-2xl bg-[#0f6963] text-white px-3 py-1.5 text-xs hover:bg-[#16a299] transition-colors whitespace-nowrap"
+                      href={`/doctor/consultation?appointment_id=${encodeURIComponent(String(row.appointment_id || ""))}&patient_id=${encodeURIComponent(String(row.patient_id || ""))}&patient_name=${encodeURIComponent(patientName)}`}
+                    >
+                      Consult
+                    </Link>
+                  ) : (
+                    <span className="text-xs text-[var(--muted)] italic whitespace-nowrap">No actions</span>
+                  )}
                 </div>
               </div>
               );
             })}
+            
             {!todaysAppointments.length && <p className="muted text-sm">No appointments for today.</p>}
+
+            {/* Subtle link at the bottom that blends perfectly */}
+            {todaysAppointments.length > 0 && (
+              <div className="pt-1">
+                <Link href="/doctor/appointments" className="text-xs font-medium text-[var(--teal)] hover:underline">
+                  View all appointments &rarr;
+                </Link>
+              </div>
+            )}
           </div>
         </Card>
 
