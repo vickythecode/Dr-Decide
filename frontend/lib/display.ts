@@ -11,7 +11,7 @@ export function formatNameWithId(name: unknown, id: unknown, fallback = "-"): st
   if (safeId) return safeId;
   return fallback;
 }
-
+  
 export function firstPresent(source: Record<string, unknown>, keys: string[]): string {
   for (const key of keys) {
     const value = toDisplayText(source[key]);

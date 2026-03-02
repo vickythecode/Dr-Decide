@@ -1,18 +1,43 @@
 from pydantic import BaseModel
 from typing import List, Optional
 
-# --- Appointment & Queue Models ---
+from enum import Enum
+from pydantic import BaseModel
+from typing import Optional
+
+# 1. Define strict statuses to prevent typos anywhere in your app!
+class AppointmentStatus(str, Enum):
+    SCHEDULED = "Scheduled"          # Booked for a future date
+    WAITING = "Waiting"              # Patient arrived, generated queue token
+    IN_CONSULTATION = "In-Consultation" # Doctor is seeing them right now
+    COMPLETED = "Completed"          # Visit is done
+    NO_SHOW = "No-Show"              # Patient never arrived
+    CANCELLED = "Cancelled"          # Cancelled beforehand
+
+# 2. What the Frontend SENDS to create an appointment
 class AppointmentRequest(BaseModel):
     patient_id: str
+    patient_name: str # Added this based on our previous fix!
     doctor_id: str
     appointment_date: str
-    reason: Optional[str] = "General Consultation"  
+    reason: Optional[str] = "General Consultation"
+    # Notice we don't ask the frontend for status here. It defaults in the DB!
+
+# 3. What the Database STORES (and returns to the frontend)
+class AppointmentResponse(BaseModel):
+    appointment_id: str
+    patient_id: str
+    patient_name: str
+    doctor_id: str
+    appointment_date: str
+    reason: str
+    status: AppointmentStatus = AppointmentStatus.SCHEDULED # Defaults to Scheduled!
 
 class QueueToken(BaseModel):
     patient_id: str
     appointment_id: str
     token_number: int
-    status: str # "Waiting", "In-Consultation", "Completed"
+    status: AppointmentStatus # Uses the exact same Enum to stay perfectly synced!
 
 # --- Consultation Models ---
 class ConsultationDetails(BaseModel):

@@ -8,49 +8,67 @@ import { useToast } from "@/context/ToastContext";
 import { getAuthSubject, rememberPatientName } from "@/lib/identity";
 import { patientSetupProfile } from "@/lib/services";
 
+const GENDER_OPTIONS = ["Male", "Female", "Other", "Prefer not to say"];
+
 export default function PatientProfilePage() {
   const { pushToast } = useToast();
-  const [fullName, setFullName] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return window.localStorage.getItem("patient_profile_fullName") || "";
-  });
-  const [age, setAge] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return window.localStorage.getItem("patient_profile_age") || "";
-  });
-  const [bloodGroup, setBloodGroup] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return window.localStorage.getItem("patient_profile_bloodGroup") || "";
-  });
-  const [gender, setGender] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return window.localStorage.getItem("patient_profile_gender") || "";
-  });
-  const [phoneNumber, setPhoneNumber] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return window.localStorage.getItem("patient_profile_phoneNumber") || "";
-  });
-  const [emergencyContact, setEmergencyContact] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return window.localStorage.getItem("patient_profile_emergencyContact") || "";
-  });
-  const [knownAllergies, setKnownAllergies] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return window.localStorage.getItem("patient_profile_knownAllergies") || "";
-  });
-  const [city, setCity] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return window.localStorage.getItem("patient_profile_city") || "";
-  });
-  const [state, setState] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return window.localStorage.getItem("patient_profile_state") || "";
-  });
-  const [pincode, setPincode] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return window.localStorage.getItem("patient_profile_pincode") || "";
-  });
+  
+  // Basic States
+  const [fullName, setFullName] = useState(() => typeof window !== "undefined" ? window.localStorage.getItem("patient_profile_fullName") || "" : "");
+  const [age, setAge] = useState(() => typeof window !== "undefined" ? window.localStorage.getItem("patient_profile_age") || "" : "");
+  const [gender, setGender] = useState(() => typeof window !== "undefined" ? window.localStorage.getItem("patient_profile_gender") || "" : "");
+  const [bloodGroup, setBloodGroup] = useState(() => typeof window !== "undefined" ? window.localStorage.getItem("patient_profile_bloodGroup") || "" : "");
+  const [phoneNumber, setPhoneNumber] = useState(() => typeof window !== "undefined" ? window.localStorage.getItem("patient_profile_phoneNumber") || "" : "");
+  const [emergencyContact, setEmergencyContact] = useState(() => typeof window !== "undefined" ? window.localStorage.getItem("patient_profile_emergencyContact") || "" : "");
+  const [knownAllergies, setKnownAllergies] = useState(() => typeof window !== "undefined" ? window.localStorage.getItem("patient_profile_knownAllergies") || "" : "");
+  
+  // Location States
+  const [pincode, setPincode] = useState(() => typeof window !== "undefined" ? window.localStorage.getItem("patient_profile_pincode") || "" : "");
+  const [city, setCity] = useState(() => typeof window !== "undefined" ? window.localStorage.getItem("patient_profile_city") || "" : "");
+  const [state, setState] = useState(() => typeof window !== "undefined" ? window.localStorage.getItem("patient_profile_state") || "" : "");
+  
   const [loading, setLoading] = useState(false);
+  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
+
+  // --- THE MAGIC PINCODE API CALL ---
+  const handlePincodeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    
+    // Only allow numbers, max 6 digits
+    if (!/^\d*$/.test(value) || value.length > 6) return;
+    
+    setPincode(value);
+
+    // Trigger API exact match at 6 digits
+    if (value.length === 6) {
+      setIsFetchingLocation(true);
+      try {
+        const response = await fetch(`https://api.postalpincode.in/pincode/${value}`);
+        const data = await response.json();
+
+        if (data && data[0] && data[0].Status === "Success") {
+          const postOffice = data[0].PostOffice[0];
+          // District is usually better for City/Region mapping in India
+          setCity(postOffice.District);
+          setState(postOffice.State);
+          pushToast("Location auto-filled!", "success");
+        } else {
+          setCity("");
+          setState("");
+          pushToast("Invalid Pincode. Please check again.", "error");
+        }
+      } catch (error) {
+        console.error(error);
+        pushToast("Network error fetching location.", "error");
+      } finally {
+        setIsFetchingLocation(false);
+      }
+    } else {
+      // Clear city and state if they delete digits making it less than 6
+      setCity("");
+      setState("");
+    }
+  };
 
   async function save() {
     const parsedAge = Number(age);
@@ -62,9 +80,10 @@ export default function PatientProfilePage() {
       !phoneNumber.trim() ||
       !city.trim() ||
       !state.trim() ||
-      !pincode.trim()
+      !pincode.trim() ||
+      pincode.length !== 6
     ) {
-      pushToast("Please fill all required profile fields", "error");
+      pushToast("Please fill all required profile fields correctly", "error");
       return;
     }
 
@@ -105,28 +124,79 @@ export default function PatientProfilePage() {
     }
   }
 
+  // Helper class for the dropdown to match your Input component's styling
+  const selectClassName = "flex h-10 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm ring-offset-[var(--background)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
+
   return (
     <Card title="Patient Profile">
-      <div className="space-y-3">
-        <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Full name" />
-        <Input type="number" min={1} value={age} onChange={(e) => setAge(e.target.value)} placeholder="Age" />
-        <Input value={gender} onChange={(e) => setGender(e.target.value)} placeholder="Gender" />
-        <Input value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="Phone number" />
-        <Input value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)} placeholder="Blood group" />
-        <Input
-          value={emergencyContact}
-          onChange={(e) => setEmergencyContact(e.target.value)}
-          placeholder="Emergency contact"
-        />
-        <Input
-          value={knownAllergies}
-          onChange={(e) => setKnownAllergies(e.target.value)}
-          placeholder="Known allergies"
-        />
-        <Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="City" />
-        <Input value={state} onChange={(e) => setState(e.target.value)} placeholder="State" />
-        <Input value={pincode} onChange={(e) => setPincode(e.target.value)} placeholder="Pincode" />
-        <Button loading={loading} onClick={save}>Save Profile</Button>
+      <div className="space-y-4">
+        
+        {/* Basic Details Section */}
+        <div className="space-y-3">
+          <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Full Name" />
+          
+          <div className="grid grid-cols-2 gap-3">
+            <Input type="number" min={1} value={age} onChange={(e) => setAge(e.target.value)} placeholder="Age" />
+            
+            <select value={gender} onChange={(e) => setGender(e.target.value)} className={selectClassName}>
+              <option value="" disabled>Select Gender</option>
+              {GENDER_OPTIONS.map(g => <option key={g} value={g}>{g}</option>)}
+            </select>
+          </div>
+
+          <Input value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="Phone Number" />
+        </div>
+
+        {/* Medical Details Section */}
+        <div className="pt-4 border-t border-[var(--border)] space-y-3">
+          <label className="text-sm font-semibold block">Medical Details</label>
+          <Input value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)} placeholder="Blood Group (e.g. O+)" />
+          <Input value={knownAllergies} onChange={(e) => setKnownAllergies(e.target.value)} placeholder="Known Allergies (or 'None')" />
+          <Input value={emergencyContact} onChange={(e) => setEmergencyContact(e.target.value)} placeholder="Emergency Contact Number" />
+        </div>
+
+        {/* Smart Location Section */}
+        <div className="pt-4 border-t border-[var(--border)] space-y-3">
+          <div>
+            <label className="text-sm font-semibold block">Location</label>
+            <p className="text-xs text-[var(--muted)] mb-2">Enter your 6-digit Pincode to auto-fill your city and state.</p>
+          </div>
+          
+          <div className="relative">
+            <Input 
+              value={pincode} 
+              onChange={handlePincodeChange} 
+              placeholder="6-Digit Pincode" 
+              maxLength={6}
+            />
+            {isFetchingLocation && (
+              <span className="absolute right-3 top-2.5 text-xs font-semibold text-[var(--teal)] animate-pulse">
+                Searching...
+              </span>
+            )}
+          </div>
+          
+          <div className="grid grid-cols-2 gap-3">
+            <Input 
+              value={city} 
+              onChange={(e) => setCity(e.target.value)} 
+              placeholder="City" 
+              disabled // Locks the input to ensure perfectly formatted backend data
+              className="bg-[var(--muted)]/20 cursor-not-allowed"
+            />
+            <Input 
+              value={state} 
+              onChange={(e) => setState(e.target.value)} 
+              placeholder="State" 
+              disabled 
+              className="bg-[var(--muted)]/20 cursor-not-allowed"
+            />
+          </div>
+        </div>
+
+        <Button loading={loading} onClick={save} className="w-full mt-2">
+          Save Profile
+        </Button>
       </div>
     </Card>
   );

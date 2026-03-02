@@ -1,0 +1,7 @@
+# Use this workspace to collaborate
+workspace:
+  id: 00e7e4a1-7657-4a62-a7fb-02787891a87e
+
+localResources:
+  collections:
+    - ..\Dr_Decide_Collection.json

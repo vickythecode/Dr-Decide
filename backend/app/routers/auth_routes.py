@@ -1,18 +1,29 @@
-from fastapi import APIRouter, HTTPException
 import os
-from app.models import UserLogin, UserSignUp, UserConfirm
+import boto3
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel # 1. ADDED MISSING IMPORT
+
+# Removed UpdateStatusRequest from this import since it's defined below
+from app.models import UserLogin, UserSignUp, UserConfirm, AppointmentStatus
 from app.services.auth import sign_up_user, login_user, confirm_sign_up
 
-router = APIRouter(prefix="/api/auth", tags=["Authentication"])
+# 2. SEPARATED THE ROUTERS SO PATHS DON'T GET MIXED UP
+auth_router = APIRouter(prefix="/api/auth", tags=["Authentication"])
+appointment_router = APIRouter(prefix="/api/appointments", tags=["Appointments"])
 
-@router.post("/signup")
+dynamodb = boto3.resource('dynamodb', region_name=os.getenv("AWS_DEFAULT_REGION", "us-east-1"))
+appointments_table = dynamodb.Table('DrDecideAppointments')
+
+# --- AUTH ROUTES ---
+
+@auth_router.post("/signup")
 async def signup(user: UserSignUp):
     response = sign_up_user(user.email, user.password, user.role)
     if "error" in response:
         raise HTTPException(status_code=400, detail=response["error"])
     return {"message": "User created successfully. Please check email to verify."}
 
-@router.post("/login")
+@auth_router.post("/login")
 async def login(user: UserLogin):
     response = login_user(user.email, user.password)
     if "error" in response:
@@ -23,13 +34,34 @@ async def login(user: UserLogin):
         "access_token": response['AccessToken'],
         "id_token": response['IdToken']
     }
-@router.post("/confirm")
+
+@auth_router.post("/confirm")
 async def confirm_signup(user_data: UserConfirm):
-    """
-    Route Logic: Handles the incoming HTTP request and returns the JSON response.
-    """
-    # 1. Call the service function. It handles all the heavy lifting!
     confirm_sign_up(user_data.email, user_data.code)
-    
-    # 2. Return the clean HTTP response
     return {"message": "Email verified successfully! You can now log in."}
+
+
+# --- APPOINTMENT ROUTES ---
+
+class UpdateStatusRequest(BaseModel):
+    status: AppointmentStatus
+
+# Notice this uses appointment_router now! Path becomes: /api/appointments/{appointment_id}/status
+@appointment_router.patch("/{appointment_id}/status")
+async def update_appointment_status(appointment_id: str, request: UpdateStatusRequest):
+    """
+    Updates the status of an appointment (e.g. Scheduled -> In-Consultation)
+    """
+    try:
+        appointments_table.update_item(
+            Key={'appointment_id': appointment_id},
+            UpdateExpression="SET #s = :status",
+            ExpressionAttributeNames={'#s': 'status'},
+            ExpressionAttributeValues={':status': request.status.value} 
+        )
+        return {"message": f"Appointment marked as {request.status.value}"}
+    
+    # 3. FIXED THE DANGLING EXCEPTION BLOCK
+    except Exception as e:
+        print(f"DynamoDB Update Error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update appointment status.")

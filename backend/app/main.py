@@ -22,7 +22,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 # Hook up the separate routers
-app.include_router(auth_routes.router)
+app.include_router(auth_routes.auth_router)
+app.include_router(auth_routes.appointment_router)
 app.include_router(doctor_routes.router)
 app.include_router(patient_routes.router)
 app.include_router(hospital_routes.router)

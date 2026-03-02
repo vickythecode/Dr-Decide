@@ -1,21 +1,21 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
 import { useToast } from "@/context/ToastContext";
-import { formatNameWithId } from "@/lib/display";
-import { doctorConsultation } from "@/lib/services";
+// 1. IMPORT the update status service!
+import { doctorConsultation, updateAppointmentStatus } from "@/lib/services";
 
 function DoctorConsultationForm() {
   const searchParams = useSearchParams();
+  const router = useRouter(); // Added router for redirection
   const { pushToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [patientLabel, setPatientLabel] = useState("");
   
-  // 1. Added patient_name to the initial state
   const [form, setForm] = useState({
     patient_id: "",
     patient_name: "", 
@@ -34,25 +34,33 @@ function DoctorConsultationForm() {
     
     if (!patientId && !appointmentId) return;
     
-    setPatientLabel(formatNameWithId(patientName, patientId, ""));
+    // Cleaned up the label to only show the name
+    setPatientLabel(patientName || "Unknown Patient");
+    
     setForm((prev) => ({
       ...prev,
       patient_id: patientId || prev.patient_id,
       appointment_id: appointmentId || prev.appointment_id,
-      patient_name: patientName || prev.patient_name, // 2. Fixed typo here
+      patient_name: patientName || prev.patient_name,
     }));
   }, [searchParams]);
 
   async function submit() {
     setLoading(true);
     try {
-      // 3. Destructure form to separate patient_name from the actual payload
       const { patient_name, ...apiPayload } = form;
       
-      // Send the clean payload to FastAPI (which contains patient_id but NOT patient_name)
+      // 1. Submit the consultation details
       await doctorConsultation(apiPayload);
       
-      pushToast("Consultation submitted successfully", "success");
+      // 2. Mark the appointment as Completed!
+      await updateAppointmentStatus(apiPayload.appointment_id, "Completed");
+      
+      pushToast("Consultation submitted successfully!", "success");
+      
+      // 3. Optional but recommended: Send the doctor back to their dashboard after a success
+      router.push("/doctor/dashboard");
+      
     } catch {
       pushToast("Failed to submit consultation", "error");
     } finally {
@@ -63,9 +71,8 @@ function DoctorConsultationForm() {
   return (
     <Card title="Submit Consultation">
       <div className="space-y-3">
-        {patientLabel && <p className="text-sm-b muted">Selected patient </p>}
+        {patientLabel && <p className="text-sm font-semibold text-[var(--teal)]">Consulting: {patientLabel}</p>}
         
-        {/* 4. Bound to form.patient_name and disabled so it's read-only */}
         <Input
           value={form.patient_name}
           disabled
@@ -85,34 +92,34 @@ function DoctorConsultationForm() {
         />
         
         <textarea
-          className="input min-h-24"
+          className="flex min-h-[100px] w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)]"
           value={form.medical_history}
           onChange={(e) => setForm((prev) => ({ ...prev, medical_history: e.target.value }))}
           placeholder="Medical history"
         />
         
         <textarea
-          className="input min-h-24"
+           className="flex min-h-[100px] w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)]"
           value={form.current_examination}
           onChange={(e) => setForm((prev) => ({ ...prev, current_examination: e.target.value }))}
           placeholder="Current examination (Type fast, AI will translate!)"
         />
         
         <textarea
-          className="input min-h-24"
+           className="flex min-h-[100px] w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)]"
           value={form.medicines_prescribed}
           onChange={(e) => setForm((prev) => ({ ...prev, medicines_prescribed: e.target.value }))}
           placeholder="Medicines prescribed"
         />
         
         <textarea
-          className="input min-h-24"
+           className="flex min-h-[100px] w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)]"
           value={form.follow_up_details}
           onChange={(e) => setForm((prev) => ({ ...prev, follow_up_details: e.target.value }))}
           placeholder="Follow up details"
         />
         
-        <Button loading={loading} onClick={submit}>Generate AI Care Plan</Button>
+        <Button loading={loading} onClick={submit} className="w-full mt-2">Generate AI Care Plan & Complete</Button>
       </div>
     </Card>
   );

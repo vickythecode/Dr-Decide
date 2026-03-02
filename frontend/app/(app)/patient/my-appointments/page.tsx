@@ -7,21 +7,38 @@ import { patientAppointments } from "@/lib/services";
 import { AppointmentItem } from "@/types";
 import { useToast } from "@/context/ToastContext";
 import { formatDateTimeIST } from "@/lib/datetime";
-import { formatNameWithId } from "@/lib/display";
 import { rememberDoctorName, resolveDoctorName } from "@/lib/identity";
 
+// 1. SIMPLIFIED: Just return the name! No more IDs.
 function displayDoctorName(item: AppointmentItem) {
-  if (item.doctor_name || resolveDoctorName(String(item.doctor_id || ""))) {
-    return formatNameWithId(item.doctor_name || resolveDoctorName(String(item.doctor_id || "")), item.doctor_id);
-  }
+  const name = item.doctor_name || resolveDoctorName(String(item.doctor_id || ""));
+  if (name) return name;
+  
   if (item.doctor_email) return item.doctor_email;
   if (item.doctor_id) return item.doctor_id;
-  return "-";
+  return "Unknown Doctor";
 }
 
 function displayClinicName(item: AppointmentItem) {
   return item.clinic_name || item.clinic || item.clinic_id || "-";
 }
+
+// 2. ADDED: Consistent color coding for statuses to match the Doctor side!
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case "Cancelled":
+    case "No-Show":
+      return "bg-red-100 text-red-700 border-red-200";
+    case "Completed":
+      return "bg-green-100 text-green-700 border-green-200";
+    case "In-Consultation":
+      return "bg-blue-100 text-blue-700 border-blue-200";
+    case "Waiting":
+      return "bg-yellow-100 text-yellow-800 border-yellow-200";
+    default:
+      return "bg-gray-100 text-gray-700 border-gray-200"; 
+  }
+};
 
 export default function PatientMyAppointmentsPage() {
   const { pushToast } = useToast();
@@ -52,31 +69,41 @@ export default function PatientMyAppointmentsPage() {
   return (
     <Card title="My Appointments" action={<Button loading={loading} onClick={load}>Refresh</Button>}>
       <div className="overflow-x-auto">
-        <table className="table">
+        {/* MATCHED STYLING: Made the table match the clean UI of the doctor dashboard */}
+        <table className="table w-full text-left">
           <thead>
-            <tr>
-              <th>Appointment ID</th>
-              <th>Date</th>
-              <th>Doctor</th>
-              <th>Clinic</th>
-              <th>Reason</th>
-              <th>Status</th>
+            <tr className="border-b border-[var(--border)]">
+              <th className="p-3">Appointment ID</th>
+              <th className="p-3">Date</th>
+              <th className="p-3">Doctor</th>
+              <th className="p-3">Clinic</th>
+              <th className="p-3">Reason</th>
+              <th className="p-3">Status</th>
             </tr>
           </thead>
           <tbody>
-            {items.map((item) => (
-              <tr key={item.appointment_id}>
-                <td>{item.appointment_id}</td>
-                <td>{formatDateTimeIST(item.appointment_date)}</td>
-                <td>{displayDoctorName(item)}</td>
-                <td>{displayClinicName(item)}</td>
-                <td>{item.reason}</td>
-                <td>{item.status}</td>
+            {items.map((item) => {
+              const status = String(item.status || "Scheduled");
+              
+              return (
+              <tr key={item.appointment_id} className="border-b border-[var(--border)] last:border-0 hover:bg-gray-50/50">
+                <td className="p-3 text-sm">{item.appointment_id}</td>
+                <td className="p-3 text-sm">{formatDateTimeIST(item.appointment_date)}</td>
+                <td className="p-3 text-sm font-medium">{displayDoctorName(item)}</td>
+                <td className="p-3 text-sm text-[var(--muted)]">{displayClinicName(item)}</td>
+                <td className="p-3 text-sm">{item.reason}</td>
+                <td className="p-3 text-sm">
+                  {/* Applied the color-coded pill */}
+                  <span className={`pill border ${getStatusColor(status)}`}>
+                    {status}
+                  </span>
+                </td>
               </tr>
-            ))}
+              );
+            })}
             {!items.length && (
               <tr>
-                <td colSpan={6} className="muted text-center">No appointments found</td>
+                <td colSpan={6} className="p-6 text-center text-[var(--muted)]">No appointments found.</td>
               </tr>
             )}
           </tbody>

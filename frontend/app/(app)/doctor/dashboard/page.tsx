@@ -5,8 +5,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import { useToast } from "@/context/ToastContext";
-import { formatNameWithId } from "@/lib/display";
-import { rememberPatientName, resolvePatientName } from "@/lib/identity";
 import { doctorAppointments, doctorDashboardStats, doctorPatients } from "@/lib/services";
 import { DoctorAppointmentItem, DoctorDashboardResponse, DoctorPatientsItem } from "@/types";
 import { formatDateTimeIST, nowISTDateKey, toISTDateKey } from "@/lib/datetime";
@@ -28,16 +26,9 @@ export default function DoctorDashboardPage() {
         doctorPatients(),
         doctorAppointments(),
       ]);
-      (patientsRes.patients || []).forEach((row) => {
-        if (row.patient_id && row.patient_name) {
-          rememberPatientName(String(row.patient_id), String(row.patient_name));
-        }
-      });
-      (appointmentsRes.schedule || []).forEach((row) => {
-        if (row.patient_id && row.patient_name) {
-          rememberPatientName(String(row.patient_id), String(row.patient_name));
-        }
-      });
+      
+      // Removed all the caching .forEach loops! Just map the data directly.
+      
       setStats(dashboardRes);
       setDailyLimit(dashboardRes.metrics.today_appointments_limit);
       setPatients(patientsRes.patients || []);
@@ -91,11 +82,6 @@ export default function DoctorDashboardPage() {
     });
   }
 
-  function getResolvedPatientName(row: DoctorAppointmentItem) {
-    const patientId = String(row.patient_id || "");
-    return row.patient_name || row.patient_email || resolvePatientName(patientId);
-  }
-
   return (
     <div className="space-y-4">
       <Card title="Doctor Dashboard">
@@ -115,21 +101,27 @@ export default function DoctorDashboardPage() {
       <div className="grid gap-4 xl:grid-cols-2">
         <Card title="Upcoming Appointments (Top 5)" action={<Button loading={loading} onClick={load}>Refresh</Button>}>
           <div className="space-y-2">
-            {todaysAppointments.map((row, idx) => (
+            {todaysAppointments.map((row, idx) => {
+              // Extract the name natively
+              const patientName = String(row.patient_name || "Unknown Patient");
+              
+              return (
               <div key={`${row.patient_id}-${idx}`} className="rounded-lg border border-[var(--border)] bg-[#f6fbfc] px-3 py-2 text-sm">
                 <div className="flex items-center justify-between gap-2">
                   <span>
-                    {formatDateTimeIST(row.appointment_date)} - {formatNameWithId(getResolvedPatientName(row), String(row.patient_id || ""))} ({row.reason})
+                    {/* Fixed the string syntax so it correctly prints the variable! */}
+                    {formatDateTimeIST(String(row.appointment_date))} - <span className="font-medium">{patientName}</span> ({String(row.reason)})
                   </span>
                   <Link
-                    className="pill"
-                    href={`/doctor/consultation?appointment_id=${encodeURIComponent(String(row.appointment_id || ""))}&patient_id=${encodeURIComponent(String(row.patient_id || ""))}&patient_name=${encodeURIComponent(String(getResolvedPatientName(row) || ""))}`}
+                    className="rounded-2xl bg-[#0f6963] text-white px-3 py-1.5 text-xs hover:bg-[#16a299] transition-colors whitespace-nowrap"
+                    href={`/doctor/consultation?appointment_id=${encodeURIComponent(String(row.appointment_id || ""))}&patient_id=${encodeURIComponent(String(row.patient_id || ""))}&patient_name=${encodeURIComponent(patientName)}`}
                   >
                     Consult
                   </Link>
                 </div>
               </div>
-            ))}
+              );
+            })}
             {!todaysAppointments.length && <p className="muted text-sm">No appointments for today.</p>}
           </div>
         </Card>

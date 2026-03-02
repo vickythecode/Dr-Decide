@@ -57,7 +57,8 @@ async def get_doctor_appointments(
     current_user: dict = Depends(require_role("Doctor"))
 ):
     """
-    Retrieves all appointments assigned to the logged-in doctor.
+    Retrieves all appointments assigned to the logged-in doctor,
+    enriched with the patient's full name.
     """
     doctor_id = current_user.get('sub')
     doctor_email = current_user.get('email') or current_user.get('cognito:username') or current_user.get('username')
@@ -65,6 +66,7 @@ async def get_doctor_appointments(
     print(f"--- Fetching Schedule for Doctor ID: {doctor_id} ---")
     
     try:
+        # 1. Fetch all appointments for this doctor
         response = appointments_table.scan(
             FilterExpression=Attr('doctor_email').eq(doctor_email) | Attr('doctor_email').eq(doctor_id)
         )
@@ -72,6 +74,22 @@ async def get_doctor_appointments(
         appointments = response.get('Items', [])
         appointments.sort(key=lambda x: x.get('appointment_date', ''))
         
+        # 2. ENRICHMENT LOOP: Attach the patient_name to each appointment
+        for appt in appointments:
+            patient_id = appt.get('patient_id')
+            
+            if patient_id and not appt.get('patient_name'):
+                try:
+                    patient_response = patients_table.get_item(Key={'patient_id': patient_id})
+                    patient_data = patient_response.get('Item', {})
+                    
+                    appt['patient_name'] = patient_data.get('full_name', 'Unknown Patient')
+                    
+                except Exception as inner_e:
+                    print(f"Error fetching patient name for {patient_id}: {inner_e}")
+                    appt['patient_name'] = 'Unknown Patient'
+
+        # 3. Return the fully enriched data
         return {
             "doctor_id": doctor_id,
             "doctor_email": doctor_email,
@@ -82,7 +100,6 @@ async def get_doctor_appointments(
     except Exception as e:
         print(f"DynamoDB Error: {e}")
         raise HTTPException(status_code=500, detail="Internal Server Error fetching schedule.")
-    
 
 # @router.post("/consultation", response_model=CarePlanResponse)
 # async def submit_consultation(

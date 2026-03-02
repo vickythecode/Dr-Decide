@@ -8,39 +8,87 @@ import { useToast } from "@/context/ToastContext";
 import { getAuthSubject, rememberDoctorName } from "@/lib/identity";
 import { doctorSetupProfile } from "@/lib/services";
 
+// Pre-defined specialties to keep your database search perfectly clean!
+const SPECIALTY_OPTIONS = [
+  "General Physician",
+  "Cardiologist",
+  "Dermatologist",
+  "Neurologist",
+  "Orthopedist",
+  "Pediatrician",
+  "Psychiatrist",
+  "Gynecologist",
+  "Oncologist"
+];
+
 export default function DoctorProfilePage() {
   const { pushToast } = useToast();
+  
+  // Basic States
+  const [doctorName, setDoctorName] = useState(() => typeof window !== "undefined" ? window.localStorage.getItem("doctor_profile_doctorName") || "" : "");
+  const [specialty, setSpecialty] = useState(() => typeof window !== "undefined" ? window.localStorage.getItem("doctor_profile_specialty") || "" : "");
+  const [clinicName, setClinicName] = useState(() => typeof window !== "undefined" ? window.localStorage.getItem("doctor_profile_clinicName") || "" : "");
+  
+  // Location States
+  const [pincode, setPincode] = useState(() => typeof window !== "undefined" ? window.localStorage.getItem("doctor_profile_pincode") || "" : "");
+  const [city, setCity] = useState(() => typeof window !== "undefined" ? window.localStorage.getItem("doctor_profile_city") || "" : "");
+  const [state, setState] = useState(() => typeof window !== "undefined" ? window.localStorage.getItem("doctor_profile_state") || "" : "");
+  
   const [loading, setLoading] = useState(false);
-  const [doctorName, setDoctorName] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return window.localStorage.getItem("doctor_profile_doctorName") || "";
-  });
-  const [specialty, setSpecialty] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return window.localStorage.getItem("doctor_profile_specialty") || "";
-  });
-  const [clinicName, setClinicName] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return window.localStorage.getItem("doctor_profile_clinicName") || "";
-  });
-  const [city, setCity] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return window.localStorage.getItem("doctor_profile_city") || "";
-  });
-  const [state, setState] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return window.localStorage.getItem("doctor_profile_state") || "";
-  });
-  const [pincode, setPincode] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return window.localStorage.getItem("doctor_profile_pincode") || "";
-  });
+  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
+
+  // --- THE MAGIC PINCODE API CALL ---
+  const handlePincodeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    
+    // Only allow numbers, max 6 digits
+    if (!/^\d*$/.test(value) || value.length > 6) return;
+    
+    setPincode(value);
+
+    // Trigger API exact match at 6 digits
+    if (value.length === 6) {
+      setIsFetchingLocation(true);
+      try {
+        const response = await fetch(`https://api.postalpincode.in/pincode/${value}`);
+        const data = await response.json();
+
+        if (data && data[0] && data[0].Status === "Success") {
+          const postOffice = data[0].PostOffice[0];
+          setCity(postOffice.District);
+          setState(postOffice.State);
+          pushToast("Location auto-filled!", "success");
+        } else {
+          setCity("");
+          setState("");
+          pushToast("Invalid Pincode. Please check again.", "error");
+        }
+      } catch (error) {
+        console.error(error);
+        pushToast("Network error fetching location.", "error");
+      } finally {
+        setIsFetchingLocation(false);
+      }
+    } else {
+      setCity("");
+      setState("");
+    }
+  };
 
   async function submit() {
-    if (!doctorName.trim() || !specialty.trim() || !clinicName.trim() || !city.trim() || !state.trim() || !pincode.trim()) {
-      pushToast("Please fill all required profile fields", "error");
+    if (
+      !doctorName.trim() || 
+      !specialty.trim() || 
+      !clinicName.trim() || 
+      !city.trim() || 
+      !state.trim() || 
+      !pincode.trim() ||
+      pincode.length !== 6
+    ) {
+      pushToast("Please fill all required profile fields correctly", "error");
       return;
     }
+
     setLoading(true);
     try {
       await doctorSetupProfile({
@@ -51,6 +99,7 @@ export default function DoctorProfilePage() {
         state: state.trim(),
         pincode: pincode.trim(),
       });
+
       if (typeof window !== "undefined") {
         window.localStorage.setItem("doctor_profile_doctorName", doctorName);
         window.localStorage.setItem("doctor_profile_specialty", specialty);
@@ -69,16 +118,67 @@ export default function DoctorProfilePage() {
     }
   }
 
+  // Tailwind class to perfectly match your Input component's styling
+  const selectClassName = "flex h-10 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm ring-offset-[var(--background)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
+
   return (
     <Card title="Doctor Profile Setup">
-      <div className="space-y-3">
-        <Input value={doctorName} onChange={(e) => setDoctorName(e.target.value)} placeholder="Doctor name" />
-        <Input value={specialty} onChange={(e) => setSpecialty(e.target.value)} placeholder="Specialty" />
-        <Input value={clinicName} onChange={(e) => setClinicName(e.target.value)} placeholder="Clinic name" />
-        <Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="City" />
-        <Input value={state} onChange={(e) => setState(e.target.value)} placeholder="State" />
-        <Input value={pincode} onChange={(e) => setPincode(e.target.value)} placeholder="Pincode" />
-        <Button loading={loading} onClick={submit}>Save Profile</Button>
+      <div className="space-y-4">
+        
+        {/* Professional Details Section */}
+        <div className="space-y-3">
+          <Input value={doctorName} onChange={(e) => setDoctorName(e.target.value)} placeholder="Full Name (e.g. Dr. John Doe)" />
+          
+          <select value={specialty} onChange={(e) => setSpecialty(e.target.value)} className={selectClassName}>
+            <option value="" disabled>Select Specialty</option>
+            {SPECIALTY_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+
+          <Input value={clinicName} onChange={(e) => setClinicName(e.target.value)} placeholder="Clinic / Hospital Name" />
+        </div>
+
+        {/* Smart Location Section */}
+        <div className="pt-4 border-t border-[var(--border)] space-y-3">
+          <div>
+            <label className="text-sm font-semibold block">Clinic Location</label>
+            <p className="text-xs text-[var(--muted)] mb-2">Enter your 6-digit Pincode to auto-fill your city and state.</p>
+          </div>
+          
+          <div className="relative">
+            <Input 
+              value={pincode} 
+              onChange={handlePincodeChange} 
+              placeholder="6-Digit Pincode" 
+              maxLength={6}
+            />
+            {isFetchingLocation && (
+              <span className="absolute right-3 top-2.5 text-xs font-semibold text-[var(--teal)] animate-pulse">
+                Searching...
+              </span>
+            )}
+          </div>
+          
+          <div className="grid grid-cols-2 gap-3">
+            <Input 
+              value={city} 
+              onChange={(e) => setCity(e.target.value)} 
+              placeholder="City" 
+              disabled // Locks the input to ensure perfectly formatted backend data
+              className="bg-[var(--muted)]/20 cursor-not-allowed"
+            />
+            <Input 
+              value={state} 
+              onChange={(e) => setState(e.target.value)} 
+              placeholder="State" 
+              disabled 
+              className="bg-[var(--muted)]/20 cursor-not-allowed"
+            />
+          </div>
+        </div>
+
+        <Button loading={loading} onClick={submit} className="w-full mt-2">
+          Save Profile
+        </Button>
       </div>
     </Card>
   );

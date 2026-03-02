@@ -42,7 +42,13 @@ export async function bookAppointment(payload: {
   const { data } = await api.post("/api/patient/book-appointment", payload);
   return data as { message: string; appointment_id: string; status: string };
 }
-
+export async function updateAppointmentStatus(appointmentId: string, status: string) {
+  // Assuming your standard API utility is called 'api' or you use fetch
+  const response = await api.patch(`/api/appointments/${appointmentId}/status`, {
+    status: status
+  });
+  return response.data;
+}
 export async function patientAppointments() {
   const { data } = await api.get("/api/patient/my-appointments");
   return data as PatientAppointmentsResponse;
