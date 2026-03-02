@@ -6,7 +6,7 @@ import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
 import Modal from "@/components/ui/Modal";
 import { useToast } from "@/context/ToastContext";
-import { getAuthSubject,rememberDoctorName } from "@/lib/identity";
+import { getAuthSubject,rememberDoctorName,resolvePatientName } from "@/lib/identity";
 import { bookAppointment, patientDoctors } from "@/lib/services";
 import { DoctorDirectoryItem } from "@/types";
 // 1. FIXED: These now perfectly match the DoctorProfilePage so search works!
@@ -75,30 +75,34 @@ export default function PatientBookAppointmentPage() {
     }
   }
 
- async function onBook() {
+  async function onBook() {
     if (!selected) return;
     if (!appointmentDate || !reason.trim()) {
       pushToast("Please provide a date and reason", "error");
       return;
     }
 
-    // 1. Get the real Patient ID from the current session
+    // 1. Get the Patient ID
     const patientId = getAuthSubject();
    
-    // 2. Safety check: Ensure they haven't been logged out
     if (!patientId) {
       pushToast("Session expired. Please log in again.", "error");
       return;
+    }
 
-    }else{
-      pushToast("Patient ID found: " + patientId, "success");
+    // 2. GET THE PATIENT NAME
+    // Try the registry first, then fallback to localStorage, then default to "Unknown"
+    let currentPatientName = resolvePatientName(patientId);
+    if (!currentPatientName && typeof window !== "undefined") {
+      currentPatientName = window.localStorage.getItem("patient_profile_fullName") || "Unknown Patient";
     }
 
     setLoading(true);
     try {
+      // 3. SEND THE NAME IN THE PAYLOAD
       await bookAppointment({
         patient_id: patientId, 
-
+        patient_name: currentPatientName, // <-- ADDED THIS!
         doctor_id: selected.doctor_id,
         appointment_date: new Date(appointmentDate).toISOString(),
         reason: reason.trim(),

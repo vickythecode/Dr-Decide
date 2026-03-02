@@ -129,7 +129,6 @@ async def log_task_done(
         raise HTTPException(status_code=500, detail="Failed to log adherence status.")
         
     return {"message": f"Task {update.task_id} marked as done for {patient_id}. Adherence logged successfully!"}
-
 @router.post("/book-appointment")
 async def book_appointment(
     req: AppointmentRequest,
@@ -154,6 +153,7 @@ async def book_appointment(
         'appointment_id': appointment_id,
         'patient_email': patient_email,
         'patient_id': patient_id, 
+        'patient_name': req.patient_name, # <-- ADDED THIS SO IT ACTUALLY SAVES!
         'doctor_id': req.doctor_id,
         'doctor_email': (doctor_profile or {}).get('email', req.doctor_id),
         'doctor_name': (doctor_profile or {}).get('doctor_name', ''),

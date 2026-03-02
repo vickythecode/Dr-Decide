@@ -35,6 +35,7 @@ export async function patientDoctors(params: {
 
 export async function bookAppointment(payload: {
   patient_id: string;
+  patient_name: string;
   doctor_id: string;
   appointment_date: string;
   reason: string;

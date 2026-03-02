@@ -17,7 +17,7 @@ class AppointmentStatus(str, Enum):
 # 2. What the Frontend SENDS to create an appointment
 class AppointmentRequest(BaseModel):
     patient_id: str
-    patient_name: str # Added this based on our previous fix!
+    patient_name: str 
     doctor_id: str
     appointment_date: str
     reason: Optional[str] = "General Consultation"
