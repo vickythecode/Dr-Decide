@@ -1,4 +1,3 @@
-from datetime import datetime
 import uuid
 from boto3.dynamodb.conditions import Attr 
 from fastapi import APIRouter, Depends, HTTPException
@@ -9,6 +8,7 @@ import boto3
 import os
 import json
 from datetime import datetime
+# import anthropic
 
 
 router = APIRouter(prefix="/api/doctor", tags=["Doctor"])
@@ -102,7 +102,7 @@ async def get_doctor_appointments(
     except Exception as e:
         print(f"DynamoDB Error: {e}")
         raise HTTPException(status_code=500, detail="Internal Server Error fetching schedule.")
-
+# Claude 3 Sonnet
 # @router.post("/consultation", response_model=CarePlanResponse)
 # async def submit_consultation(
 #     details: ConsultationDetails,
@@ -201,11 +201,15 @@ async def get_doctor_appointments(
 #         follow_up_reminder=details.follow_up_details,
 #         status="Success - Saved to Database & SMS Sent!"
 #     )
-#//////////// Gemini 
+# #//////////// Gemini 
 api_key = os.getenv("GEMINI_API_KEY")
-if not api_key:
-    print("🚨 WARNING: GEMINI API KEY IS MISSING!")
-genai.configure(api_key=api_key)
+if api_key:
+    genai.configure(api_key=api_key)
+# list models to verify connection - you should see "gemini-2.5-pro" in the output!
+# models = genai.list_models() 
+# for model in models: 
+#     print(model.name, model.supported_generation_methods)
+
 @router.post("/consultation", response_model=CarePlanResponse)
 async def submit_consultation(
     details: ConsultationDetails,
@@ -219,7 +223,7 @@ async def submit_consultation(
     
     print(f"Consultation processed by Doctor ID: {doctor_id}")
 
-    # 1. Prepare the prompt for Gemini (Formatted for your React UI)
+    # 1. Prepare the prompt for Gemini
     prompt = f"""
     You are an expert medical AI assistant. Analyze these doctor's notes and translate them into simple, patient-friendly language.
     
@@ -235,12 +239,11 @@ async def submit_consultation(
     Prescribed Medicines: {details.medicines_prescribed}
     """
 
-    # 2. Call Google Gemini (Bypassing AWS Bedrock)
+    # 2. Call Google Gemini
     try:
         print("Sending clinical notes to Google Gemini...")
         model = genai.GenerativeModel(
-            'gemini-1.5-flash',
-            # This forces Gemini to return perfect JSON every single time!
+            'gemini-2.5-flash',
             generation_config={"response_mime_type": "application/json"}
         )
         
@@ -250,7 +253,6 @@ async def submit_consultation(
 
     except Exception as e:
         print(f"Gemini Error: {e}")
-        # Hackathon Fallback: If AI fails or internet drops, keep the demo alive!
         ai_simplified_plan = json.dumps({
             "care_plan": {
                 "Morning": "Take prescribed medication after breakfast.",
@@ -297,7 +299,7 @@ async def submit_consultation(
     except Exception as e:
         print(f"Notification Save Error: {e}")
 
-    # 5. FIRE AMAZON SNS TEXT MESSAGE (Live SMS)
+    # 5. FIRE AMAZON SNS TEXT MESSAGE
     if hasattr(details, 'phone_number') and details.phone_number:
         try:
             sms_message = "Hi! Dr. Decide has finished your consultation. Check the app to view your simplified care instructions."
@@ -309,14 +311,15 @@ async def submit_consultation(
         except Exception as e:
             print(f"Amazon SNS Error: {e}")
 
-    # 6. Return the response to the frontend
+    # 6. Return the response
     return CarePlanResponse(
         patient_id=details.patient_id,
         simplified_plan=ai_simplified_plan,
         follow_up_reminder=details.follow_up_details,
         status="Success - Saved to DB, AI Generated, & SMS Sent!"
-    )
-#///
+    )#///  
+
+
 @router.get("/dashboard-stats")
 async def get_dashboard_stats(
     current_user: dict = Depends(require_role("Doctor"))

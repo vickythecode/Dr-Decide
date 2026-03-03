@@ -1,284 +1,752 @@
 {
-    "info": {
-        "_postman_id": "b2c3d4e5-f6a7-8901-2345-6789abcdef05",
-        "name": "Dr. Decide - Full Hackathon Flow (Final with Profiles)",
-        "description": "Complete End-to-End API testing using Postman's native Bearer Token authentication, including the new Patient Profile flow.",
-        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-    },
-    "item": [
+  "info": {
+    "_postman_id": "fbace080-5c33-4480-aafb-db3caddc85bf",
+    "name": "Dr. Decide - Full Hackathon Flow (Final with Profiles)",
+    "description": "Complete End-to-End API testing using Postman's native Bearer Token authentication, including the new Patient Profile flow.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "32486436"
+  },
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
         {
-            "name": "1. Authentication",
-            "item": [
-                {
-                    "name": "Doctor Sign Up",
-                    "request": {
-                        "method": "POST",
-                        "header": [{"key": "Content-Type", "value": "application/json"}],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n  \"email\": \"doctor@hospital.com\",\n  \"password\": \"Hackathon2026!\",\n  \"role\": \"Doctor\"\n}"
-                        },
-                        "url": {"raw": "http://127.0.0.1:8000/api/auth/signup", "protocol": "http", "host": ["127", "0", "0", "1"], "port": "8000", "path": ["api", "auth", "signup"]}
-                    }
-                },
-                {
-                    "name": "Doctor Login (Copy IdToken!)",
-                    "request": {
-                        "method": "POST",
-                        "header": [{"key": "Content-Type", "value": "application/json"}],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n  \"email\": \"doctor@hospital.com\",\n  \"password\": \"Hackathon2026!\"\n}"
-                        },
-                        "url": {"raw": "http://127.0.0.1:8000/api/auth/login", "protocol": "http", "host": ["127", "0", "0", "1"], "port": "8000", "path": ["api", "auth", "login"]}
-                    }
-                },
-                {
-                    "name": "Patient Sign Up",
-                    "request": {
-                        "method": "POST",
-                        "header": [{"key": "Content-Type", "value": "application/json"}],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n  \"email\": \"patient@gmail.com\",\n  \"password\": \"Hackathon2026!\",\n  \"role\": \"Patient\"\n}"
-                        },
-                        "url": {"raw": "http://127.0.0.1:8000/api/auth/signup", "protocol": "http", "host": ["127", "0", "0", "1"], "port": "8000", "path": ["api", "auth", "signup"]}
-                    }
-                },
-                {
-                    "name": "Patient Login (Copy IdToken!)",
-                    "request": {
-                        "method": "POST",
-                        "header": [{"key": "Content-Type", "value": "application/json"}],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n  \"email\": \"patient@gmail.com\",\n  \"password\": \"Hackathon2026!\"\n}"
-                        },
-                        "url": {"raw": "http://127.0.0.1:8000/api/auth/login", "protocol": "http", "host": ["127", "0", "0", "1"], "port": "8000", "path": ["api", "auth", "login"]}
-                    }
-                }
-            ]
+          "name": "Doctor Sign Up",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"doctor@hospital.com\",\n  \"password\": \"Hackathon2026!\",\n  \"role\": \"Doctor\"\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/auth/signup",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "auth",
+                "signup"
+              ]
+            }
+          },
+          "response": []
         },
         {
-            "name": "2. Patient Flow",
-            "item": [
-                {
-                    "name": "Check Profile Status",
-                    "request": {
-                        "auth": {
-                            "type": "bearer",
-                            "bearer": [{"key": "token", "value": "PASTE_PATIENT_ID_TOKEN_HERE", "type": "string"}]
-                        },
-                        "method": "GET",
-                        "header": [],
-                        "url": {"raw": "http://127.0.0.1:8000/api/patient/profile", "protocol": "http", "host": ["127", "0", "0", "1"], "port": "8000", "path": ["api", "patient", "profile"]}
-                    }
-                },
-                {
-                    "name": "Setup Patient Profile",
-                    "request": {
-                        "auth": {
-                            "type": "bearer",
-                            "bearer": [{"key": "token", "value": "PASTE_PATIENT_ID_TOKEN_HERE", "type": "string"}]
-                        },
-                        "method": "POST",
-                        "header": [{"key": "Content-Type", "value": "application/json"}],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n  \"full_name\": \"John Doe\",\n  \"age\": 34,\n  \"gender\": \"Male\",\n  \"phone_number\": \"+919876543210\",\n  \"blood_group\": \"O+\",\n  \"emergency_contact\": \"+919876543211\",\n  \"known_allergies\": \"Penicillin\"\n}"
-                        },
-                        "url": {"raw": "http://127.0.0.1:8000/api/patient/setup-profile", "protocol": "http", "host": ["127", "0", "0", "1"], "port": "8000", "path": ["api", "patient", "setup-profile"]}
-                    }
-                },
-                {
-                    "name": "Search Doctors Directory",
-                    "request": {
-                        "auth": {
-                            "type": "bearer",
-                            "bearer": [{"key": "token", "value": "PASTE_PATIENT_ID_TOKEN_HERE", "type": "string"}]
-                        },
-                        "method": "GET",
-                        "header": [],
-                        "url": {
-                            "raw": "http://127.0.0.1:8000/api/patient/doctors?specialty=Cardiology",
-                            "protocol": "http",
-                            "host": ["127", "0", "0", "1"],
-                            "port": "8000",
-                            "path": ["api", "patient", "doctors"],
-                            "query": [{"key": "specialty", "value": "Cardiology"}]
-                        }
-                    }
-                },
-                {
-                    "name": "Book Appointment",
-                    "request": {
-                        "auth": {
-                            "type": "bearer",
-                            "bearer": [{"key": "token", "value": "PASTE_PATIENT_ID_TOKEN_HERE", "type": "string"}]
-                        },
-                        "method": "POST",
-                        "header": [{"key": "Content-Type", "value": "application/json"}],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n  \"doctor_id\": \"PASTE_DOCTOR_SUB_ID_HERE\",\n  \"appointment_date\": \"2026-03-05T10:00:00Z\",\n  \"reason\": \"Routine Checkup\"\n}"
-                        },
-                        "url": {"raw": "http://127.0.0.1:8000/api/patient/book-appointment", "protocol": "http", "host": ["127", "0", "0", "1"], "port": "8000", "path": ["api", "patient", "book-appointment"]}
-                    }
-                },
-                {
-                    "name": "View My Appointments",
-                    "request": {
-                        "auth": {
-                            "type": "bearer",
-                            "bearer": [{"key": "token", "value": "PASTE_PATIENT_ID_TOKEN_HERE", "type": "string"}]
-                        },
-                        "method": "GET",
-                        "header": [],
-                        "url": {"raw": "http://127.0.0.1:8000/api/patient/my-appointments", "protocol": "http", "host": ["127", "0", "0", "1"], "port": "8000", "path": ["api", "patient", "my-appointments"]}
-                    }
-                },
-                {
-                    "name": "View AI Care Plan",
-                    "request": {
-                        "auth": {
-                            "type": "bearer",
-                            "bearer": [{"key": "token", "value": "PASTE_PATIENT_ID_TOKEN_HERE", "type": "string"}]
-                        },
-                        "method": "GET",
-                        "header": [],
-                        "url": {"raw": "http://127.0.0.1:8000/api/patient/my-plan", "protocol": "http", "host": ["127", "0", "0", "1"], "port": "8000", "path": ["api", "patient", "my-plan"]}
-                    }
-                },
-                {
-                    "name": "Log Task as Done",
-                    "request": {
-                        "auth": {
-                            "type": "bearer",
-                            "bearer": [{"key": "token", "value": "PASTE_PATIENT_ID_TOKEN_HERE", "type": "string"}]
-                        },
-                        "method": "POST",
-                        "header": [{"key": "Content-Type", "value": "application/json"}],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n  \"task_id\": \"take_meds_morning\",\n  \"status\": \"Done\"\n}"
-                        },
-                        "url": {"raw": "http://127.0.0.1:8000/api/patient/log-task", "protocol": "http", "host": ["127", "0", "0", "1"], "port": "8000", "path": ["api", "patient", "log-task"]}
-                    }
-                },
-                {
-                    "name": "View My Notifications",
-                    "request": {
-                        "auth": {
-                            "type": "bearer",
-                            "bearer": [{"key": "token", "value": "PASTE_PATIENT_ID_TOKEN_HERE", "type": "string"}]
-                        },
-                        "method": "GET",
-                        "header": [],
-                        "url": {"raw": "http://127.0.0.1:8000/api/patient/notifications", "protocol": "http", "host": ["127", "0", "0", "1"], "port": "8000", "path": ["api", "patient", "notifications"]}
-                    }
-                }
-            ]
+          "name": "Doctor Login (Copy IdToken!)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"doctor@hospital.com\",\n  \"password\": \"Hackathon2026!\"\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/auth/login",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
         },
         {
-            "name": "3. Hospital Flow (No Auth Required for Kiosk/TV)",
-            "item": [
-                {
-                    "name": "Kiosk Check-In (Generate Token)",
-                    "request": {
-                        "method": "POST",
-                        "header": [],
-                        "url": {
-                            "raw": "http://127.0.0.1:8000/api/hospital/check-in/PASTE_PATIENT_SUB_ID_HERE?appointment_id=APT-123456",
-                            "protocol": "http",
-                            "host": ["127", "0", "0", "1"],
-                            "port": "8000",
-                            "path": ["api", "hospital", "check-in", "PASTE_PATIENT_SUB_ID_HERE"],
-                            "query": [{"key": "appointment_id", "value": "APT-123456"}]
-                        }
-                    }
-                },
-                {
-                    "name": "Waiting Room TV (Queue Status)",
-                    "request": {
-                        "method": "GET",
-                        "header": [],
-                        "url": {"raw": "http://127.0.0.1:8000/api/hospital/queue-status", "protocol": "http", "host": ["127", "0", "0", "1"], "port": "8000", "path": ["api", "hospital", "queue-status"]}
-                    }
-                }
-            ]
+          "name": "Patient Sign Up",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"patient@gmail.com\",\n  \"password\": \"Hackathon2026!\",\n  \"role\": \"Patient\"\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/auth/signup",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "auth",
+                "signup"
+              ]
+            }
+          },
+          "response": []
         },
         {
-            "name": "4. Doctor Flow",
-            "item": [
-                {
-                    "name": "Setup Doctor Profile",
-                    "request": {
-                        "auth": {
-                            "type": "bearer",
-                            "bearer": [{"key": "token", "value": "PASTE_DOCTOR_ID_TOKEN_HERE", "type": "string"}]
-                        },
-                        "method": "POST",
-                        "header": [{"key": "Content-Type", "value": "application/json"}],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n  \"doctor_name\": \"Dr. Jane Smith\",\n  \"specialty\": \"Neurology\",\n  \"clinic_name\": \"Brain Health Clinic\"\n}"
-                        },
-                        "url": {"raw": "http://127.0.0.1:8000/api/doctor/setup-profile", "protocol": "http", "host": ["127", "0", "0", "1"], "port": "8000", "path": ["api", "doctor", "setup-profile"]}
-                    }
-                },
-                {
-                    "name": "View Dashboard Stats",
-                    "request": {
-                        "auth": {
-                            "type": "bearer",
-                            "bearer": [{"key": "token", "value": "PASTE_DOCTOR_ID_TOKEN_HERE", "type": "string"}]
-                        },
-                        "method": "GET",
-                        "header": [],
-                        "url": {"raw": "http://127.0.0.1:8000/api/doctor/dashboard-stats", "protocol": "http", "host": ["127", "0", "0", "1"], "port": "8000", "path": ["api", "doctor", "dashboard-stats"]}
-                    }
-                },
-                {
-                    "name": "View My Appointments",
-                    "request": {
-                        "auth": {
-                            "type": "bearer",
-                            "bearer": [{"key": "token", "value": "PASTE_DOCTOR_ID_TOKEN_HERE", "type": "string"}]
-                        },
-                        "method": "GET",
-                        "header": [],
-                        "url": {"raw": "http://127.0.0.1:8000/api/doctor/my-appointments", "protocol": "http", "host": ["127", "0", "0", "1"], "port": "8000", "path": ["api", "doctor", "my-appointments"]}
-                    }
-                },
-                {
-                    "name": "View My Patients Directory",
-                    "request": {
-                        "auth": {
-                            "type": "bearer",
-                            "bearer": [{"key": "token", "value": "PASTE_DOCTOR_ID_TOKEN_HERE", "type": "string"}]
-                        },
-                        "method": "GET",
-                        "header": [],
-                        "url": {"raw": "http://127.0.0.1:8000/api/doctor/my-patients", "protocol": "http", "host": ["127", "0", "0", "1"], "port": "8000", "path": ["api", "doctor", "my-patients"]}
-                    }
-                },
-                {
-                    "name": "Submit Consultation (AI Engine + SNS)",
-                    "request": {
-                        "auth": {
-                            "type": "bearer",
-                            "bearer": [{"key": "token", "value": "PASTE_DOCTOR_ID_TOKEN_HERE", "type": "string"}]
-                        },
-                        "method": "POST",
-                        "header": [{"key": "Content-Type", "value": "application/json"}],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n  \"patient_id\": \"PASTE_PATIENT_SUB_ID_HERE\",\n  \"appointment_id\": \"APT-123456\",\n  \"phone_number\": \"+919876543210\",\n  \"medical_history\": \"Hypertension. Mild seasonal allergies.\",\n  \"current_examination\": \"BP 145/90. Diagnosed with upper respiratory tract infection.\",\n  \"medicines_prescribed\": \"Azithromycin 250mg PO QD x 5 days.\",\n  \"follow_up_details\": \"Return to clinic if fever exceeds 101F.\"\n}"
-                        },
-                        "url": {"raw": "http://127.0.0.1:8000/api/doctor/consultation", "protocol": "http", "host": ["127", "0", "0", "1"], "port": "8000", "path": ["api", "doctor", "consultation"]}
-                    }
-                }
-            ]
+          "name": "Patient Login (Copy IdToken!)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"patient@gmail.com\",\n  \"password\": \"Hackathon2026!\"\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/auth/login",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
         }
-    ]
+      ]
+    },
+    {
+      "name": "2. Patient Flow",
+      "item": [
+        {
+          "name": "Check Profile Status",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "PASTE_PATIENT_ID_TOKEN_HERE",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/patient/profile",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "patient",
+                "profile"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Setup Patient Profile",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "PASTE_PATIENT_ID_TOKEN_HERE",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"John Doe\",\n  \"age\": 34,\n  \"gender\": \"Male\",\n  \"phone_number\": \"+919876543210\",\n  \"blood_group\": \"O+\",\n  \"emergency_contact\": \"+919876543211\",\n  \"known_allergies\": \"Penicillin\"\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/patient/setup-profile",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "patient",
+                "setup-profile"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Search Doctors Directory",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "PASTE_PATIENT_ID_TOKEN_HERE",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/patient/doctors?specialty=Cardiology",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "patient",
+                "doctors"
+              ],
+              "query": [
+                {
+                  "key": "specialty",
+                  "value": "Cardiology"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Book Appointment",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "PASTE_PATIENT_ID_TOKEN_HERE",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctor_id\": \"PASTE_DOCTOR_SUB_ID_HERE\",\n  \"appointment_date\": \"2026-03-05T10:00:00Z\",\n  \"reason\": \"Routine Checkup\"\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/patient/book-appointment",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "patient",
+                "book-appointment"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "View My Appointments",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "PASTE_PATIENT_ID_TOKEN_HERE",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/patient/my-appointments",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "patient",
+                "my-appointments"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "View AI Care Plan",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "PASTE_PATIENT_ID_TOKEN_HERE",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/patient/my-plan",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "patient",
+                "my-plan"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Log Task as Done",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "PASTE_PATIENT_ID_TOKEN_HERE",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"task_id\": \"take_meds_morning\",\n  \"status\": \"Done\"\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/patient/log-task",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "patient",
+                "log-task"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "View My Notifications",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "PASTE_PATIENT_ID_TOKEN_HERE",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/patient/notifications",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "patient",
+                "notifications"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Hospital Flow (No Auth Required for Kiosk/TV)",
+      "item": [
+        {
+          "name": "Kiosk Check-In (Generate Token)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/hospital/check-in/PASTE_PATIENT_SUB_ID_HERE?appointment_id=APT-123456",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "hospital",
+                "check-in",
+                "PASTE_PATIENT_SUB_ID_HERE"
+              ],
+              "query": [
+                {
+                  "key": "appointment_id",
+                  "value": "APT-123456"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Waiting Room TV (Queue Status)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/hospital/queue-status",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "hospital",
+                "queue-status"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Search Patient",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"patients\": [\r\n    {\r\n      \"patient_id\": \"12345\",\r\n      \"name\": \"John Doe\",\r\n      \"appointment_id\": \"67890\"\r\n    }\r\n  ]\r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/hospital/search-patient",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "hospital",
+                "search-patient"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get appointment details with appointment id",
+          "request": {
+            "method": "GET",
+            "header": []
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Doctor Flow",
+      "item": [
+        {
+          "name": "Setup Doctor Profile",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "PASTE_DOCTOR_ID_TOKEN_HERE",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctor_name\": \"Dr. Jane Smith\",\n  \"specialty\": \"Neurology\",\n  \"clinic_name\": \"Brain Health Clinic\"\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/doctor/setup-profile",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "doctor",
+                "setup-profile"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "View Dashboard Stats",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "PASTE_DOCTOR_ID_TOKEN_HERE",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/doctor/dashboard-stats",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "doctor",
+                "dashboard-stats"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "View My Appointments",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "PASTE_DOCTOR_ID_TOKEN_HERE",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/doctor/my-appointments",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "doctor",
+                "my-appointments"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "View My Patients Directory",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "PASTE_DOCTOR_ID_TOKEN_HERE",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/doctor/my-patients",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "doctor",
+                "my-patients"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Submit Consultation (AI Engine + SNS)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "PASTE_DOCTOR_ID_TOKEN_HERE",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient_id\": \"PASTE_PATIENT_SUB_ID_HERE\",\n  \"appointment_id\": \"APT-123456\",\n  \"phone_number\": \"+919876543210\",\n  \"medical_history\": \"Hypertension. Mild seasonal allergies.\",\n  \"current_examination\": \"BP 145/90. Diagnosed with upper respiratory tract infection.\",\n  \"medicines_prescribed\": \"Azithromycin 250mg PO QD x 5 days.\",\n  \"follow_up_details\": \"Return to clinic if fever exceeds 101F.\"\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/doctor/consultation",
+              "protocol": "http",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "api",
+                "doctor",
+                "consultation"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
 }
