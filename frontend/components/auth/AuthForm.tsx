@@ -11,13 +11,67 @@ import { login, signup } from "@/lib/services";
 import { useAuth } from "@/context/AuthContext";
 import { Role } from "@/types";
 import { roleToDashboardPath, roleToSlug } from "@/lib/roles";
+import { api } from "@/lib/api";
 
 type Mode = "login" | "signup";
 
-function roleToPostLoginPath(role: Role): string {
-  if (role === "Doctor") return "/doctor/profile";
-  if (role === "Patient") return "/patient/profile";
-  return roleToDashboardPath(role);
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length < 2) return null;
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
+    const json = typeof window !== "undefined" ? window.atob(padded) : "";
+    if (!json) return null;
+    return JSON.parse(json) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeRole(value: unknown): Role | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "doctor") return "Doctor";
+  if (normalized === "patient") return "Patient";
+  if (normalized === "receptionist") return "Receptionist";
+  return null;
+}
+
+function resolveRoleFromToken(token: string): Role | null {
+  const payload = decodeJwtPayload(token);
+  if (!payload) return null;
+  const directRole =
+    normalizeRole(payload["custom:role"]) ||
+    normalizeRole(payload.role) ||
+    normalizeRole(payload["custom_role"]);
+  if (directRole) return directRole;
+  const groups = payload["cognito:groups"];
+  if (Array.isArray(groups)) {
+    for (const group of groups) {
+      const role = normalizeRole(group);
+      if (role) return role;
+    }
+  }
+  return null;
+}
+
+async function roleToPostLoginPath(role: Role): Promise<string> {
+  if (role === "Receptionist") return roleToDashboardPath(role);
+
+  const profileEndpoint = role === "Doctor" ? "/api/doctor/profile" : "/api/patient/profile";
+  const profilePath = role === "Doctor" ? "/doctor/profile" : "/patient/profile";
+  const dashboardPath = roleToDashboardPath(role);
+
+  try {
+    const { data } = await api.get(profileEndpoint);
+    const status = typeof data?.profile_status === "string" ? data.profile_status.toLowerCase() : "";
+    if (status === "complete") return dashboardPath;
+    return profilePath;
+  } catch {
+    // If profile check fails, avoid blocking access.
+    return dashboardPath;
+  }
 }
 
 export default function AuthForm({ mode, fixedRole }: { mode: Mode; fixedRole?: Role }) {
@@ -49,16 +103,32 @@ export default function AuthForm({ mode, fixedRole }: { mode: Mode; fixedRole?: 
         const res = await login({ email, password });
         const token = res.id_token || res.access_token;
         if (!token) {
-          pushToast("No token returned from backend", "error");
+          pushToast("Login failed. Please try again.", "error");
           return;
         }
-        setSession(token, role);
+
+        const authenticatedRole = resolveRoleFromToken(token);
+        if (!authenticatedRole) {
+          pushToast("Login failed. Please try again.", "error");
+          return;
+        }
+
+        if (fixedRole && authenticatedRole !== fixedRole) {
+          pushToast(`This account belongs to ${authenticatedRole}. Please use the ${authenticatedRole} login portal.`, "error");
+          return;
+        }
+
+        setSession(token, authenticatedRole);
         pushToast("Login successful", "success");
-        router.push(roleToPostLoginPath(role));
+        const nextPath = await roleToPostLoginPath(authenticatedRole);
+        router.push(nextPath);
       }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Request failed";
-      pushToast(message, "error");
+    } catch {
+      if (mode === "login") {
+        pushToast("Login failed. Please check your credentials and try again.", "error");
+      } else {
+        pushToast("Sign up failed. Please try again.", "error");
+      }
     } finally {
       setLoading(false);
     }
