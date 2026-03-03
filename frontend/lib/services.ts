@@ -7,6 +7,7 @@ import {
   LoginResponse,
   NotificationsResponse,
   PatientAppointmentsResponse,
+
   Role,
 } from "@/types";
 
@@ -18,7 +19,7 @@ export async function signup(payload: {
   const { data } = await api.post("/api/auth/signup", payload);
   return data as { message: string };
 }
-
+export const updateDoctorCapacity = (limit:number) => api.patch('/api/doctor/capacity', { daily_limit: limit }); 
 export async function login(payload: { email: string; password: string }) {
   const { data } = await api.post("/api/auth/login", payload);
   return data as LoginResponse;

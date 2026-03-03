@@ -2,7 +2,8 @@ from datetime import datetime
 import uuid
 from boto3.dynamodb.conditions import Attr 
 from fastapi import APIRouter, Depends, HTTPException
-from app.models import ConsultationDetails, CarePlanResponse,DoctorProfileSetup
+import google.generativeai as genai
+from app.models import ConsultationDetails, CarePlanResponse,DoctorProfileSetup,CapacityUpdateRequest
 from app.services.auth import require_role
 import boto3
 import os
@@ -11,6 +12,7 @@ from datetime import datetime
 
 
 router = APIRouter(prefix="/api/doctor", tags=["Doctor"])
+
 
 # Initialize AWS Services
 dynamodb = boto3.resource('dynamodb', region_name=os.getenv("AWS_DEFAULT_REGION", "us-east-1"))
@@ -200,6 +202,10 @@ async def get_doctor_appointments(
 #         status="Success - Saved to Database & SMS Sent!"
 #     )
 #//////////// Gemini 
+api_key = os.getenv("GEMINI_API_KEY")
+if not api_key:
+    print("🚨 WARNING: GEMINI API KEY IS MISSING!")
+genai.configure(api_key=api_key)
 @router.post("/consultation", response_model=CarePlanResponse)
 async def submit_consultation(
     details: ConsultationDetails,
@@ -459,3 +465,25 @@ async def get_doctor_profile(
     except Exception as e:
         print(f"Doctor Profile Fetch Error: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch doctor profile.")
+    
+router.patch("/capacity")
+async def update_capacity(
+    req: CapacityUpdateRequest,
+    current_user: dict = Depends(require_role("Doctor"))
+):
+    """
+    Allows the doctor to update their maximum daily appointment limit.
+    """
+    doctor_id = current_user.get('sub')
+
+    try:
+        # Save the limit directly to the doctor's profile in the Doctors table
+        doctors_table.update_item(
+            Key={'doctor_id': doctor_id},
+            UpdateExpression="SET daily_limit = :limit",
+            ExpressionAttributeValues={':limit': req.daily_limit}
+        )
+        return {"message": f"Daily capacity updated to {req.daily_limit} patients"}
+    except Exception as e:
+        print(f"Failed to update capacity: {e}")
+        raise HTTPException(status_code=500, detail="Could not update capacity.")

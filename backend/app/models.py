@@ -88,3 +88,7 @@ class PatientProfileSetup(BaseModel):
 class UserConfirm(BaseModel):
     email: str
     code: str
+from pydantic import BaseModel
+
+class CapacityUpdateRequest(BaseModel):
+    daily_limit: int
