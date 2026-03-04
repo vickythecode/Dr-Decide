@@ -1,7 +1,9 @@
 import uuid
 from boto3.dynamodb.conditions import Attr 
 from fastapi import APIRouter, Depends, HTTPException
-import google.generativeai as genai
+from google import genai 
+from google.genai import types
+from google.genai.types import GenerateContentConfig
 from app.models import ConsultationDetails, CarePlanResponse,DoctorProfileSetup,CapacityUpdateRequest
 from app.services.auth import require_role
 import boto3
@@ -202,30 +204,39 @@ async def get_doctor_appointments(
 #         status="Success - Saved to Database & SMS Sent!"
 #     )
 # #//////////// Gemini 
-api_key = os.getenv("GEMINI_API_KEY")
-if api_key:
-    genai.configure(api_key=api_key)
-# list models to verify connection - you should see "gemini-2.5-pro" in the output!
-# models = genai.list_models() 
-# for model in models: 
-#     print(model.name, model.supported_generation_methods)
+
+
+from fastapi import APIRouter, Depends, File, UploadFile, Form
+from typing import Optional
+
+# Import your service function here if it's in a different file
+# from services import generate_and_save_care_plan 
 
 @router.post("/consultation", response_model=CarePlanResponse)
 async def submit_consultation(
-    details: ConsultationDetails,
+    patient_id: str = Form(...),
+    appointment_id: str = Form(...),
+    current_examination: str = Form(...),
+    medicines_prescribed: str = Form(...),
+    follow_up_details: str = Form(...),
+    phone_number: Optional[str] = Form(""),
+    medical_history_text: Optional[str] = Form(""), # Manual text entry
+    file: Optional[UploadFile] = File(None),        # The uploaded PDF or Image
     current_user: dict = Depends(require_role("Doctor")) 
 ):
     """
-    Doctor submits medical data. Translated by Google Gemini 1.5 Flash. Saved to DB. SMS Sent.
+    Doctor submits medical data (Text + Optional PDF/Image). 
+    Translated by Google Gemini 2.5 Flash. Saved to DB. SMS Sent.
     """
     doctor_id = current_user.get('sub')
     doctor_email = current_user.get('email') or current_user.get('cognito:username') or current_user.get('username')
     
     print(f"Consultation processed by Doctor ID: {doctor_id}")
 
-    # 1. Prepare the prompt for Gemini
+    # 1. Prepare the base text prompt
     prompt = f"""
-    You are an expert medical AI assistant. Analyze these doctor's notes and translate them into simple, patient-friendly language.
+    You are an expert medical AI assistant. Analyze these doctor's notes and the attached medical records (if any).
+    Translate them into simple, patient-friendly language.
     
     You MUST output your response STRICTLY as a JSON object with two exact keys: "care_plan" and "summarization". 
     Do not include markdown like ```json.
@@ -235,19 +246,40 @@ async def submit_consultation(
     2. "summarization": A list of 3 short bullet points summarizing the visit, diagnosis, and next steps in plain English.
     
     Doctor's Notes:
-    Diagnosis & Examination: {details.current_examination}
-    Prescribed Medicines: {details.medicines_prescribed}
+    Manual Medical History: {medical_history_text}
+    Diagnosis & Examination: {current_examination}
+    Prescribed Medicines: {medicines_prescribed}
     """
 
-    # 2. Call Google Gemini
-    try:
-        print("Sending clinical notes to Google Gemini...")
-        model = genai.GenerativeModel(
-            'gemini-2.5-flash',
-            generation_config={"response_mime_type": "application/json"}
-        )
+   # 2. Build the Multi-Modal Payload for Gemini
+    gemini_contents = [prompt]
+    
+    # If the doctor uploaded a file, attach it using the official types.Part object!
+    if file:
+        file_bytes = await file.read()
+        print(f"File attached: {file.filename} ({file.content_type})")
         
-        response = model.generate_content(prompt)
+        # 🔥 THE FIX IS HERE 🔥
+        gemini_contents.append(
+            types.Part.from_bytes(
+                data=file_bytes,
+                mime_type=file.content_type
+            )
+        )
+
+    # 3. Call Google Gemini
+    try:
+        print("Sending clinical notes & files to Google Gemini...")
+        client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=gemini_contents, # Pass the combined list (text + file)
+            config=GenerateContentConfig(
+                response_mime_type="application/json"
+            )
+        )
+
         ai_simplified_plan = response.text
         print("✅ Gemini Care Plan Generated Successfully!")
 
@@ -267,17 +299,20 @@ async def submit_consultation(
             ]
         })
 
-    # 3. Save the final Care Plan record to DynamoDB
+    # 4. Save the final Care Plan record to DynamoDB
+    # Note: We do NOT save the raw PDF bytes to DynamoDB (it will crash the DB limit).
+    # We just save the text, and a note if a file was attached.
     record = {
-        'patient_id': details.patient_id,
-        'appointment_id': details.appointment_id, 
+        'patient_id': patient_id,
+        'appointment_id': appointment_id, 
         'doctor_id': doctor_id,       
         'doctor_email': doctor_email, 
-        'raw_medical_history': details.medical_history,
-        'raw_examination': details.current_examination,
-        'medicines_prescribed': details.medicines_prescribed,
+        'raw_medical_history': medical_history_text,
+        'file_attached': file.filename if file else "None", 
+        'raw_examination': current_examination,
+        'medicines_prescribed': medicines_prescribed,
         'simplified_plan': ai_simplified_plan,
-        'follow_up_reminder': details.follow_up_details,
+        'follow_up_reminder': follow_up_details,
         'status': 'Completed'
     }
 
@@ -286,12 +321,12 @@ async def submit_consultation(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save care plan to database: {str(e)}")
 
-    # 4. CREATE IN-APP NOTIFICATION (For the Patient Dashboard)
+    # 5. CREATE IN-APP NOTIFICATION
     notification_id = f"NOTIF-{uuid.uuid4().hex[:6].upper()}"
     try:
         notifications_table.put_item(Item={
             'notification_id': notification_id,
-            'patient_id': details.patient_id,
+            'patient_id': patient_id,
             'message': f"Care plan updated by {doctor_email}: New daily tasks added.",
             'timestamp': datetime.utcnow().isoformat(),
             'status': 'Unread'
@@ -299,26 +334,25 @@ async def submit_consultation(
     except Exception as e:
         print(f"Notification Save Error: {e}")
 
-    # 5. FIRE AMAZON SNS TEXT MESSAGE
-    if hasattr(details, 'phone_number') and details.phone_number:
+    # 6. FIRE AMAZON SNS TEXT MESSAGE
+    if phone_number:
         try:
             sms_message = "Hi! Dr. Decide has finished your consultation. Check the app to view your simplified care instructions."
             sns_client.publish(
-                PhoneNumber=details.phone_number,
+                PhoneNumber=phone_number,
                 Message=sms_message
             )
-            print(f"SMS successfully sent to {details.phone_number}")
+            print(f"SMS successfully sent to {phone_number}")
         except Exception as e:
             print(f"Amazon SNS Error: {e}")
 
-    # 6. Return the response
+    # 7. Return the response
     return CarePlanResponse(
-        patient_id=details.patient_id,
+        patient_id=patient_id,
         simplified_plan=ai_simplified_plan,
-        follow_up_reminder=details.follow_up_details,
+        follow_up_reminder=follow_up_details,
         status="Success - Saved to DB, AI Generated, & SMS Sent!"
-    )#///  
-
+    )
 
 @router.get("/dashboard-stats")
 async def get_dashboard_stats(

@@ -34,7 +34,19 @@ async def login(user: UserLogin):
         "access_token": response['AccessToken'],
         "id_token": response['IdToken']
     }
+class ForceChangePasswordRequest(BaseModel):
+    email: str
+    new_password: str
+    session: str
 
+@auth_router.post("/force-change-password")
+async def force_change_password(req: ForceChangePasswordRequest):
+    result = respond_to_auth_challenge(req.email, req.new_password, req.session)
+    
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+        
+    return result
 @auth_router.post("/confirm")
 async def confirm_signup(user_data: UserConfirm):
     confirm_sign_up(user_data.email, user_data.code)

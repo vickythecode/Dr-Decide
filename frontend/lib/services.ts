@@ -51,6 +51,7 @@ export async function updateAppointmentStatus(appointmentId: string, status: str
   });
   return response.data;
 }
+
 export async function patientAppointments() {
   const { data } = await api.get("/api/patient/my-appointments");
   return data as PatientAppointmentsResponse;
@@ -151,16 +152,13 @@ export async function doctorPatients() {
   return data as { total_patients: number; patients: DoctorPatientsItem[] };
 }
 
-export async function doctorConsultation(payload: {
-  patient_id: string;
-  appointment_id: string;
-  phone_number: string;
-  medical_history: string;
-  current_examination: string;
-  medicines_prescribed: string;
-  follow_up_details: string;
-}) {
-  const { data } = await api.post("/api/doctor/consultation", payload);
+export async function doctorConsultation(formDataPayload: FormData) {
+  const { data } = await api.post("/api/doctor/consultation", formDataPayload, {
+    headers: {
+      // ⚠️ CRITICAL: Let the browser automatically set the multipart boundary
+      "Content-Type": "multipart/form-data" 
+    }
+  });
   return data;
 }
 
@@ -184,5 +182,41 @@ export async function verifyEmail(email: string, code: string) {
     email,
     code,
   });
+  return data;
+}
+
+// recceptioniist services
+
+// 1. GET Appointment Details
+export async function getAppointmentDetails(appointmentId: string) {
+  const { data } = await api.get(`/api/hospital/appointment/${appointmentId}`);
+  return data;
+}
+
+// 2. POST Check-in & Generate Token
+export async function generateCheckInToken(patientId: string, appointmentId: string) {
+  // patient_id is a path parameter, appointment_id is a query parameter
+  const { data } = await api.post(`/api/hospital/check-in/${patientId}?appointment_id=${appointmentId}`);
+  return data;
+}
+
+// 3. GET Search Patient (For future use if you want to search by name instead of ID)
+export async function searchPatient(fullName: string) {
+  const { data } = await api.get(`/api/hospital/search-patient?full_name=${fullName}`);
+  return data;
+}
+
+// 4. GET Queue Status (For the TV / Manage Queue page)
+export async function fetchQueueStatus() {
+  const { data } = await api.get(`/api/hospital/queue-status`);
+  return data;
+}
+
+export async function forceChangePassword(payload: { 
+  email: string; 
+  new_password: string; 
+  session: string 
+}) {
+  const { data } = await api.post("/api/auth/force-change-password", payload);
   return data;
 }

@@ -28,8 +28,6 @@ async def search_patient(full_name: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to search patient directory: {str(e)}")
 
-
-@router.post("/check-in/{patient_id}", response_model=QueueToken)
 @router.post("/check-in/{patient_id}", response_model=QueueToken)
 async def generate_queue_token(patient_id: str, appointment_id: str):
     """
@@ -93,9 +91,22 @@ async def get_patient_from_appointment(appointment_id: str):
 
         # Assuming appointment_id is unique, return the first match
         appointment = items[0]
+        
+        # Fetch doctor name from Doctor table if needed
+        doctor_name = appointment.get("doctor_id")
+        try:
+            doctors_table = dynamodb.Table('DrDecideDoctors')
+            doctor_response = doctors_table.get_item(Key={"doctor_id": appointment.get("doctor_id")})
+            if "Item" in doctor_response:
+                doctor_name = doctor_response["Item"].get("doctor_name", appointment.get("doctor_id"))
+        except Exception:
+            pass  # Fall back to doctor_id if lookup fails
+        
         return {
             "patient_id": appointment.get("patient_id"),
-            "full_name": appointment.get( "patient_name"),
+            "full_name": appointment.get("patient_name"),
+            "doctor_name": doctor_name,
+            "time": appointment.get("appointment_date"),
             "doctor_id": appointment.get("doctor_id"),
             "appointment_id": appointment.get("appointment_id")
         } 

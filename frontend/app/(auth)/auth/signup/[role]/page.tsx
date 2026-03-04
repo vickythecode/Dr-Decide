@@ -9,7 +9,7 @@ export default async function RoleSignupPage({
 }) {
   const { role: roleSlug } = await params;
   const role = slugToRole(roleSlug);
-  if (!role || role === "Receptionist") {
+  if (!role ) {
     notFound();
   }
 
