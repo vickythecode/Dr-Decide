@@ -103,7 +103,7 @@ export default function ReceptionistManageQueuePage() {
                         <Clock className="w-3 h-3 mr-1" /> Waiting
                       </span>
                     )}
-                    {row.status === "In Consultation" && (
+                    {row.status === "In-Consultation" && (
                       <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-teal-100 text-[var(--teal)] uppercase tracking-wide animate-pulse">
                         <PlayCircle className="w-3 h-3 mr-1" /> In Room
                       </span>
@@ -118,12 +118,12 @@ export default function ReceptionistManageQueuePage() {
                     {row.status === "Waiting" && (
                       <Button 
                         className="text-xs px-3 py-1.5" 
-                        onClick={() => handleStatusUpdate(row.appointment_id, "In Consultation")}
+                        onClick={() => handleStatusUpdate(row.appointment_id, "In-Consultation")}
                       >
                         Call Patient
                       </Button>
                     )}
-                    {row.status === "In Consultation" && (
+                    {row.status === "In-Consultation" && (
                       <Button 
                         variant="secondary" 
                         className="text-xs px-3 py-1.5 text-green-600 border-green-200 hover:bg-green-50"
