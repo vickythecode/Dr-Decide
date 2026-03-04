@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
 import { useToast } from "@/context/ToastContext";
 import { getAuthSubject, rememberPatientName } from "@/lib/identity";
+import { api } from "@/lib/api";
 import { patientSetupProfile } from "@/lib/services";
 
 const GENDER_OPTIONS = ["Male", "Female", "Other", "Prefer not to say"];
@@ -29,6 +30,49 @@ export default function PatientProfilePage() {
   
   const [loading, setLoading] = useState(false);
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
+
+  useEffect(() => {
+    async function loadProfile() {
+      try {
+        const { data } = await api.get("/api/patient/profile");
+        if (data && data.profile_status === "Complete") {
+          const resolvedPincode = data.pincode ?? data.pin_code ?? data.postal_code ?? "";
+          const normalizedPincode = String(resolvedPincode).trim();
+
+          setFullName((prev) => data.full_name || prev);
+          setAge((prev) => (data.age != null ? String(data.age) : prev));
+          setGender((prev) => data.gender || prev);
+          setBloodGroup((prev) => data.blood_group || prev);
+          setPhoneNumber((prev) => data.phone_number || prev);
+          setEmergencyContact((prev) => data.emergency_contact || prev);
+          setKnownAllergies((prev) => data.known_allergies || prev);
+          setCity((prev) => data.city || prev);
+          setState((prev) => data.state || prev);
+          setPincode((prev) => normalizedPincode || prev);
+
+          if (typeof window !== "undefined") {
+            if (data.full_name) window.localStorage.setItem("patient_profile_fullName", data.full_name);
+            if (data.age != null) window.localStorage.setItem("patient_profile_age", String(data.age));
+            if (data.gender) window.localStorage.setItem("patient_profile_gender", data.gender);
+            if (data.phone_number) window.localStorage.setItem("patient_profile_phoneNumber", data.phone_number);
+            if (data.blood_group) window.localStorage.setItem("patient_profile_bloodGroup", data.blood_group);
+            if (data.emergency_contact) window.localStorage.setItem("patient_profile_emergencyContact", data.emergency_contact);
+            if (data.known_allergies) window.localStorage.setItem("patient_profile_knownAllergies", data.known_allergies);
+            if (data.city) window.localStorage.setItem("patient_profile_city", data.city);
+            if (data.state) window.localStorage.setItem("patient_profile_state", data.state);
+            if (normalizedPincode) window.localStorage.setItem("patient_profile_pincode", normalizedPincode);
+          }
+        }
+      } catch (error) {
+        console.log("No existing patient profile found or error fetching:", error);
+      } finally {
+        setIsInitializing(false);
+      }
+    }
+
+    loadProfile();
+  }, []);
 
   // --- THE MAGIC PINCODE API CALL ---
   const handlePincodeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -126,6 +170,16 @@ export default function PatientProfilePage() {
 
   // Helper class for the dropdown to match your Input component's styling
   const selectClassName = "flex h-10 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm ring-offset-[var(--background)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
+
+  if (isInitializing) {
+    return (
+      <Card title="Patient Profile">
+        <div className="flex justify-center p-8 animate-pulse text-sm text-gray-500">
+          Loading profile data...
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card title="Patient Profile">
