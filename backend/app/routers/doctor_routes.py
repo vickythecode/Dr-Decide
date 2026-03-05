@@ -349,6 +349,7 @@ async def submit_consultation(
     # 7. Return the response
     return CarePlanResponse(
         patient_id=patient_id,
+        appointment_id=appointment_id,
         simplified_plan=ai_simplified_plan,
         follow_up_reminder=follow_up_details,
         status="Success - Saved to DB, AI Generated, & SMS Sent!"

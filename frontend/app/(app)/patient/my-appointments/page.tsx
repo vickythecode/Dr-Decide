@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState, useMemo } from "react";
+import { useRouter } from "next/navigation"; // 1. Import useRouter
+import { RefreshCw, FileText } from "lucide-react"; // Icons for UI consistency
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
@@ -13,7 +15,6 @@ import { rememberDoctorName, resolveDoctorName } from "@/lib/identity";
 function displayDoctorName(item: AppointmentItem) {
   const name = item.doctor_name || resolveDoctorName(String(item.doctor_id || ""));
   if (name) return name;
-  
   if (item.doctor_email) return item.doctor_email;
   if (item.doctor_id) return item.doctor_id;
   return "Unknown Doctor";
@@ -31,20 +32,20 @@ const getStatusColor = (status: string) => {
     case "Completed":
       return "bg-green-100 text-green-700 border-green-200";
     case "In-Consultation":
+    case "In Consultation":
       return "bg-blue-100 text-blue-700 border-blue-200";
     case "Waiting":
       return "bg-yellow-100 text-yellow-800 border-yellow-200";
     default:
-      return "bg-gray-100 text-gray-700 border-gray-200"; 
+      return "bg-gray-100 text-gray-700 border-gray-200";
   }
 };
 
 export default function PatientMyAppointmentsPage() {
+  const router = useRouter(); // 2. Initialize router
   const { pushToast } = useToast();
   const [items, setItems] = useState<AppointmentItem[]>([]);
   const [loading, setLoading] = useState(false);
-  
-  // NEW: State for Search and Filtering
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
 
@@ -69,24 +70,20 @@ export default function PatientMyAppointmentsPage() {
     load();
   }, [load]);
 
-  // NEW: Dynamically filter items based on search query and status selection
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
       const status = String(item.status || "Scheduled");
       const matchesStatus = statusFilter === "All" || status === statusFilter;
       const matchesSearch = item.appointment_id?.toLowerCase().includes(searchQuery.toLowerCase());
-      
       return matchesStatus && matchesSearch;
     });
   }, [items, searchQuery, statusFilter]);
 
-  // Consistent Dropdown Styling
   const selectClassName = "flex h-10 w-full md:w-48 rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)]";
 
   return (
-    <Card title="My Appointments" action={<Button loading={loading} onClick={load}>Refresh</Button>}>
+    <Card title="My Appointments" action={<Button loading={loading} onClick={load} className="flex gap-2 items-center"><RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Refresh</Button>}>
       
-      {/* FILTER BAR SECTION */}
       <div className="mb-4 flex flex-col md:flex-row gap-3">
         <Input
           placeholder="Search by Appointment ID..."
@@ -101,7 +98,7 @@ export default function PatientMyAppointmentsPage() {
           <option value="All">All Statuses</option>
           <option value="Scheduled">Scheduled</option>
           <option value="Waiting">Waiting</option>
-          <option value="In-Consultation">In-Consultation</option>
+          <option value="In-Consultation">In Consultation</option>
           <option value="Completed">Completed</option>
           <option value="Cancelled">Cancelled</option>
           <option value="No-Show">No-Show</option>
@@ -117,7 +114,7 @@ export default function PatientMyAppointmentsPage() {
               <th className="p-3 text-sm font-semibold">Doctor</th>
               <th className="p-3 text-sm font-semibold">Clinic</th>
               <th className="p-3 text-sm font-semibold">Reason</th>
-              <th className="p-3 text-sm font-semibold">Status</th>
+              <th className="p-3 text-sm font-semibold">Status & Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -126,15 +123,29 @@ export default function PatientMyAppointmentsPage() {
               
               return (
               <tr key={item.appointment_id} className="border-b border-[var(--border)] last:border-0 hover:bg-gray-50/50">
-                <td className="p-3 text-sm">{item.appointment_id}</td>
+                <td className="p-3 text-sm font-mono">{item.appointment_id}</td>
                 <td className="p-3 text-sm">{formatDateTimeIST(item.appointment_date)}</td>
                 <td className="p-3 text-sm font-medium">{displayDoctorName(item)}</td>
                 <td className="p-3 text-sm text-[var(--muted)]">{displayClinicName(item)}</td>
                 <td className="p-3 text-sm">{item.reason}</td>
                 <td className="p-3 text-sm">
-                  <span className={`pill border ${getStatusColor(status)}`}>
-                    {status}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`pill border ${getStatusColor(status)}`}>
+                      {status}
+                    </span>
+                    
+                    {/* 3. Care Plan Button Logic */}
+                    {status === "Completed" && (
+                      <button
+                        onClick={() => router.push(`/patient/care-plan/${item.appointment_id}`)}
+                        className="flex items-center gap-1 text-[10px] font-bold text-[var(--teal)] uppercase hover:underline"
+                        title="View Medical Care Plan"
+                      >
+                        <FileText className="w-3 h-3" />
+                        Plan
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
               );
@@ -142,8 +153,8 @@ export default function PatientMyAppointmentsPage() {
             {!filteredItems.length && (
               <tr>
                 <td colSpan={6} className="p-6 text-center text-sm text-[var(--muted)]">
-                  {items.length === 0 
-                    ? "You haven't booked any appointments yet." 
+                  {items.length === 0
+                    ? "You haven't booked any appointments yet."
                     : "No appointments match your search or filter."}
                 </td>
               </tr>

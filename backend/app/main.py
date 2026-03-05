@@ -2,7 +2,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-from app.routers import doctor_routes, patient_routes,hospital_routes,auth_routes
+from app.routers import doctor_routes, patient_routes,hospital_routes,auth_routes,adherence_routes
 load_dotenv()
 # This is your main FastAPI Gateway
 app = FastAPI(title="Dr. Decide API Gateway")
@@ -22,6 +22,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 # Hook up the separate routers
+app.include_router(adherence_routes.router)
+app.include_router(patient_routes.router)   
 app.include_router(auth_routes.auth_router)
 app.include_router(auth_routes.appointment_router)
 app.include_router(doctor_routes.router)

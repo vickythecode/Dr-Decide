@@ -5,7 +5,7 @@ from pydantic import BaseModel # 1. ADDED MISSING IMPORT
 
 # Removed UpdateStatusRequest from this import since it's defined below
 from app.models import UserLogin, UserSignUp, UserConfirm, AppointmentStatus
-from app.services.auth import sign_up_user, login_user, confirm_sign_up
+from app.services.auth import  sign_up_user, login_user, confirm_sign_up
 
 # 2. SEPARATED THE ROUTERS SO PATHS DON'T GET MIXED UP
 auth_router = APIRouter(prefix="/api/auth", tags=["Authentication"])

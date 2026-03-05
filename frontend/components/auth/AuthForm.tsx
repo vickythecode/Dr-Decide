@@ -15,6 +15,7 @@ import { api } from "@/lib/api";
 
 type Mode = "login" | "signup";
 
+// --- JWT HELPERS ---
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   try {
     const parts = token.split(".");
@@ -56,6 +57,7 @@ function resolveRoleFromToken(token: string): Role | null {
   return null;
 }
 
+// --- CORE REDIRECT & PROFILE SYNC LOGIC ---
 async function roleToPostLoginPath(role: Role): Promise<string> {
   if (role === "Receptionist") return roleToDashboardPath(role);
 
@@ -64,16 +66,32 @@ async function roleToPostLoginPath(role: Role): Promise<string> {
   const dashboardPath = roleToDashboardPath(role);
 
   try {
+    // We fetch the profile to check completion status AND sync the name
     const { data } = await api.get(profileEndpoint);
+    
+    // --- SYNC NAME TO LOCALSTORAGE ---
+    if (typeof window !== "undefined" && data) {
+      if (role === "Patient" && data.full_name) {
+        // This key matches what your booking page looks for
+        window.localStorage.setItem("patient_profile_fullName", data.full_name);
+        if (data.pincode) {
+            window.localStorage.setItem("patient_profile_pincode", data.pincode);
+        }
+      } else if (role === "Doctor" && data.doctor_name) {
+        window.localStorage.setItem("doctor_profile_name", data.doctor_name);
+      }
+    }
+
     const status = typeof data?.profile_status === "string" ? data.profile_status.toLowerCase() : "";
     if (status === "complete") return dashboardPath;
     return profilePath;
   } catch {
-    // If profile check fails, avoid blocking access.
+    // Avoid blocking access if the profile API is down
     return dashboardPath;
   }
 }
 
+// --- MAIN AUTH FORM COMPONENT ---
 export default function AuthForm({ mode, fixedRole }: { mode: Mode; fixedRole?: Role }) {
   const router = useRouter();
   const { pushToast } = useToast();
@@ -83,25 +101,22 @@ export default function AuthForm({ mode, fixedRole }: { mode: Mode; fixedRole?: 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  
   const roleOptions: Role[] =
     mode === "signup" ? (["Patient", "Doctor"] as Role[]) : (["Patient", "Doctor", "Receptionist"] as Role[]);
 
- async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     try {
       if (mode === "signup") {
         await signup({ email, password, role });
-        
-        // --- 1. CHANGE THE TOAST MESSAGE ---
         pushToast("Success! Please check your email for the code.", "success");
-        
-        // --- 2. UPDATE THE REDIRECT ROUTE ---
         router.push(`/auth/verify-email?email=${encodeURIComponent(email)}&role=${roleToSlug(role)}`);
-        
       } else {
         const res = await login({ email, password });
         const token = res.id_token || res.access_token;
+        
         if (!token) {
           pushToast("Login failed. Please try again.", "error");
           return;
@@ -109,30 +124,30 @@ export default function AuthForm({ mode, fixedRole }: { mode: Mode; fixedRole?: 
 
         const authenticatedRole = resolveRoleFromToken(token);
         if (!authenticatedRole) {
-          pushToast("Login failed. Please try again.", "error");
+          pushToast("Login failed. Role not found.", "error");
           return;
         }
 
         if (fixedRole && authenticatedRole !== fixedRole) {
-          pushToast(`This account belongs to ${authenticatedRole}. Please use the ${authenticatedRole} login portal.`, "error");
+          pushToast(`This account belongs to ${authenticatedRole}. Please use the correct portal.`, "error");
           return;
         }
 
+        // Establish session in AuthContext
         setSession(token, authenticatedRole);
         pushToast("Login successful", "success");
+        
+        // Sync name and determine destination
         const nextPath = await roleToPostLoginPath(authenticatedRole);
         router.push(nextPath);
       }
-    } catch {
-      if (mode === "login") {
-        pushToast("Login failed. Please check your credentials and try again.", "error");
-      } else {
-        pushToast("Sign up failed. Please try again.", "error");
-      }
+    } catch (err) {
+      pushToast("Authentication failed. Please check your credentials.", "error");
     } finally {
       setLoading(false);
     }
   }
+
   return (
     <Card title={`Dr. Decide ${mode === "login" ? "Login" : "Sign Up"}`}>
       <p className="muted mb-4 text-sm">
@@ -148,9 +163,7 @@ export default function AuthForm({ mode, fixedRole }: { mode: Mode; fixedRole?: 
                   key={item}
                   type="button"
                   className={`tab ${role === item ? "tab-active" : ""}`}
-                  onClick={() => {
-                    setRole(item);
-                  }}
+                  onClick={() => setRole(item)}
                 >
                   {item}
                 </button>
@@ -160,10 +173,21 @@ export default function AuthForm({ mode, fixedRole }: { mode: Mode; fixedRole?: 
         )}
 
         <label className="text-sm font-semibold">Email</label>
-        <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" required />
+        <Input 
+          value={email} 
+          onChange={(e) => setEmail(e.target.value)} 
+          placeholder="name@example.com" 
+          required 
+        />
 
         <label className="text-sm font-semibold">Password</label>
-        <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter password" required />
+        <Input 
+          type="password" 
+          value={password} 
+          onChange={(e) => setPassword(e.target.value)} 
+          placeholder="Enter password" 
+          required 
+        />
 
         <Button loading={loading} className="w-full" type="submit">
           {mode === "login" ? "Login" : "Create Account"}

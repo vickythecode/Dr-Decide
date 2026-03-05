@@ -60,6 +60,7 @@ export async function patientAppointments() {
 export async function patientCarePlan() {
   const { data } = await api.get("/api/patient/my-plan");
   return data as {
+    appointment_id: string;
     patient_id: string;
     simplified_plan: string;
     follow_up_reminder: string;

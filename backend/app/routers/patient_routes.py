@@ -4,7 +4,7 @@ import os
 from boto3.dynamodb.conditions import Attr, Key
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends
-from app.models import AppointmentRequest, PatientProfileSetup, TaskUpdate
+from app.models import AppointmentRequest, CarePlanResponse, PatientProfileSetup, TaskUpdate
 from app.services.auth import require_role 
 from typing import Optional
 from datetime import datetime
@@ -99,6 +99,7 @@ async def get_care_plan(
         latest_plan = plans[-1]
         
         return {
+            "appointment_id": latest_plan.get("appointment_id"),
             "patient_id": latest_plan.get("patient_id"),
             "simplified_plan": latest_plan.get("simplified_plan"), 
             "follow_up_reminder": latest_plan.get("follow_up_reminder"),
@@ -153,7 +154,7 @@ async def book_appointment(
         'appointment_id': appointment_id,
         'patient_email': patient_email,
         'patient_id': patient_id, 
-        'patient_name': req.patient_name, # <-- ADDED THIS SO IT ACTUALLY SAVES!
+        'patient_name': req.patient_name,   
         'doctor_id': req.doctor_id,
         'doctor_email': (doctor_profile or {}).get('email', req.doctor_id),
         'doctor_name': (doctor_profile or {}).get('doctor_name', ''),
@@ -317,3 +318,33 @@ async def get_patient_profile(
     except Exception as e:
         print(f"Profile Fetch Error: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch patient profile.")
+    
+
+@router.get("/care-plan/{appointment_id}", response_model=CarePlanResponse)
+async def get_care_plan_by_appointment_id(appointment_id: str):
+    try:
+        # Use scan with a filter instead of get_item
+        # This works even if appointment_id is NOT the Partition Key
+        response = care_plans_table.scan(
+            FilterExpression=Attr('appointment_id').eq(appointment_id)
+        )
+        
+        items = response.get('Items', [])
+        
+        if not items:
+            raise HTTPException(status_code=404, detail="Care plan not found")
+
+        # Take the first matching record
+        item = items[0]
+
+        return CarePlanResponse(
+            patient_id=item.get("patient_id"),
+            appointment_id=item.get("appointment_id"),
+            simplified_plan=item.get("simplified_plan", "{}"),
+            follow_up_reminder=item.get("follow_up_reminder") or item.get("follow_up_details") or "None",
+            status=item.get("status", "Completed")
+        )
+
+    except Exception as e:
+        print(f"Scan Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Database search failed: {str(e)}")

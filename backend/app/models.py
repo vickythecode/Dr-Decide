@@ -52,9 +52,11 @@ class ConsultationDetails(BaseModel):
 
 class CarePlanResponse(BaseModel):
     patient_id: str
+    appointment_id: str
     simplified_plan: str
     follow_up_reminder: str
     status: str
+    
 class UserSignUp(BaseModel):
     email: str
     password: str
@@ -88,7 +90,5 @@ class PatientProfileSetup(BaseModel):
 class UserConfirm(BaseModel):
     email: str
     code: str
-from pydantic import BaseModel
-
 class CapacityUpdateRequest(BaseModel):
     daily_limit: int

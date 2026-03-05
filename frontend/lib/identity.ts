@@ -52,7 +52,7 @@ function upsertName(storageKey: string, id: string, name: string) {
   writeRegistry(storageKey, current);
 }
 
-function findName(storageKey: string, id: string): string {
+function  findName(storageKey: string, id: string): string {
   const safeId = id.trim();
   if (!safeId) return "";
   const current = readRegistry(storageKey);
