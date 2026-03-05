@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import Skeleton from "@/components/ui/Skeleton";
 import { useToast } from "@/context/ToastContext";
 import { patientAppointments } from "@/lib/services";
 import { AppointmentItem } from "@/types";
@@ -45,6 +46,15 @@ export default function PatientFollowUpsPage() {
             </tr>
           </thead>
           <tbody>
+            {loading && !rows.length &&
+              Array.from({ length: 6 }).map((_, idx) => (
+                <tr key={`followup-skeleton-${idx}`}>
+                  <td><Skeleton className="h-4 w-36" /></td>
+                  <td><Skeleton className="h-4 w-28" /></td>
+                  <td><Skeleton className="h-4 w-40" /></td>
+                  <td><Skeleton className="h-4 w-24" /></td>
+                </tr>
+              ))}
             {rows.map((item) => (
               <tr key={item.appointment_id}>
                 <td>{formatDateTimeIST(item.appointment_date)}</td>
@@ -53,7 +63,7 @@ export default function PatientFollowUpsPage() {
                 <td>{item.status}</td>
               </tr>
             ))}
-            {!rows.length && (
+            {!loading && !rows.length && (
               <tr>
                 <td colSpan={4} className="muted text-center">No follow-up records found.</td>
               </tr>

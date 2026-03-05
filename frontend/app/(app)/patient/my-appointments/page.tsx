@@ -6,6 +6,7 @@ import { RefreshCw, FileText } from "lucide-react"; // Icons for UI consistency
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
+import Skeleton from "@/components/ui/Skeleton";
 import { patientAppointments } from "@/lib/services";
 import { AppointmentItem } from "@/types";
 import { useToast } from "@/context/ToastContext";
@@ -118,6 +119,17 @@ export default function PatientMyAppointmentsPage() {
             </tr>
           </thead>
           <tbody>
+            {loading && items.length === 0 &&
+              Array.from({ length: 6 }).map((_, idx) => (
+                <tr key={`skeleton-${idx}`} className="border-b border-[var(--border)] last:border-0">
+                  <td className="p-3"><Skeleton className="h-4 w-28" /></td>
+                  <td className="p-3"><Skeleton className="h-4 w-36" /></td>
+                  <td className="p-3"><Skeleton className="h-4 w-32" /></td>
+                  <td className="p-3"><Skeleton className="h-4 w-24" /></td>
+                  <td className="p-3"><Skeleton className="h-4 w-40" /></td>
+                  <td className="p-3"><Skeleton className="h-6 w-28 rounded-full" /></td>
+                </tr>
+              ))}
             {filteredItems.map((item) => {
               const status = String(item.status || "Scheduled");
               
@@ -138,7 +150,7 @@ export default function PatientMyAppointmentsPage() {
                     {status === "Completed" && (
                       <button
                         onClick={() => router.push(`/patient/care-plan/${item.appointment_id}`)}
-                        className="flex items-center gap-1 text-[10px] font-bold text-[var(--teal)] uppercase hover:underline"
+                        className="flex items-center gap-1 text-[10px] font-bold text-[var(--teal)] uppercase hover:underline cursor-pointer"
                         title="View Medical Care Plan"
                       >
                         <FileText className="w-3 h-3" />
@@ -150,7 +162,7 @@ export default function PatientMyAppointmentsPage() {
               </tr>
               );
             })}
-            {!filteredItems.length && (
+            {!loading && !filteredItems.length && (
               <tr>
                 <td colSpan={6} className="p-6 text-center text-sm text-[var(--muted)]">
                   {items.length === 0

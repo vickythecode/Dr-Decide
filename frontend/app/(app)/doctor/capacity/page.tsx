@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import Skeleton from "@/components/ui/Skeleton";
 import { useToast } from "@/context/ToastContext";
 import { doctorDashboardStats } from "@/lib/services";
 
@@ -47,6 +48,16 @@ export default function DoctorCapacityPage() {
         <Button variant="secondary" className="px-3 py-1 text-xs" onClick={() => adjustDailyLimit(1)}>+</Button>
       </div>
       <div className="space-y-4">
+        {loading && !hourly.length &&
+          Array.from({ length: 5 }).map((_, idx) => (
+            <div key={`capacity-skeleton-${idx}`} className="rounded-xl border border-[var(--border)] p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-20" />
+              </div>
+              <Skeleton className="h-3 w-full rounded-full" />
+            </div>
+          ))}
         {hourly.map((item) => {
           const percent = item.limit ? Math.min(100, (item.booked / item.limit) * 100) : 0;
           return (
@@ -61,7 +72,7 @@ export default function DoctorCapacityPage() {
             </div>
           );
         })}
-        {!hourly.length && <p className="muted text-sm">No hourly capacity available.</p>}
+        {!loading && !hourly.length && <p className="muted text-sm">No hourly capacity available.</p>}
       </div>
     </Card>
   );

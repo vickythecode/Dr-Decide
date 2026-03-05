@@ -23,7 +23,7 @@ export default function Button({
           : variant === "danger"
           ? "btn-danger"
           : "btn-secondary"
-      } ${className}`}
+      } cursor-pointer ${className}`}
       disabled={disabled || loading}
       {...rest}
     >

@@ -17,7 +17,7 @@ export default function Modal({
       <div className="panel w-full max-w-md p-4">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="section-title">{title}</h3>
-          <button className="text-sm text-[var(--muted)]" onClick={onClose} type="button">
+          <button className="text-sm text-[var(--muted)] cursor-pointer" onClick={onClose} type="button">
             Close
           </button>
         </div>

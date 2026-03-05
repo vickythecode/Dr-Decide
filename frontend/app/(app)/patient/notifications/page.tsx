@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import Skeleton from "@/components/ui/Skeleton";
 import { useToast } from "@/context/ToastContext";
 import { patientNotifications } from "@/lib/services";
 import { NotificationItem } from "@/types";
@@ -37,6 +38,13 @@ export default function PatientNotificationsPage() {
       action={<Button loading={loading} onClick={load}>Refresh</Button>}
     >
       <div className="space-y-2">
+        {loading && !items.length &&
+          Array.from({ length: 5 }).map((_, idx) => (
+            <div key={`notif-skeleton-${idx}`} className="rounded-lg border border-[var(--border)] p-3 space-y-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-3 w-2/3" />
+            </div>
+          ))}
         {items.map((item, idx) => (
           <div key={`${item.notification_id || idx}`} className="rounded-lg border border-[var(--border)] p-3">
             <p className="text-sm">{item.message}</p>
@@ -45,7 +53,7 @@ export default function PatientNotificationsPage() {
             </p>
           </div>
         ))}
-        {!items.length && <p className="muted text-sm">No notifications yet.</p>}
+        {!loading && !items.length && <p className="muted text-sm">No notifications yet.</p>}
       </div>
     </Card>
   );

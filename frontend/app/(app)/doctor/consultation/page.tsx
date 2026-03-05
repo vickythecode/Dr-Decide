@@ -177,7 +177,7 @@ function DoctorConsultationForm() {
               <button
                 type="button"
                 onClick={() => setFile(null)}
-                className="p-1.5 rounded-md hover:bg-red-100 text-red-500 transition-colors"
+                className="p-1.5 rounded-md hover:bg-red-100 text-red-500 transition-colors cursor-pointer"
                 title="Remove file"
               >
                 <X className="w-5 h-5" />

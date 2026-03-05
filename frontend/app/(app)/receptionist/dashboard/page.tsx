@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
+import Skeleton from "@/components/ui/Skeleton";
 import { useToast } from "@/context/ToastContext";
 import { hospitalCheckIn, hospitalQueue } from "@/lib/services";
 
@@ -56,10 +57,10 @@ export default function ReceptionistDashboardPage() {
   return (
     <div className="space-y-4">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Card title="Today Bookings"><p className="kpi-value">{queue.length}</p></Card>
-        <Card title="Patient Check-Ins"><p className="kpi-value">{queue.length}</p></Card>
-        <Card title="Open Tasks"><p className="kpi-value">{openTasks}</p></Card>
-        <Card title="Notifications"><p className="kpi-value">{notificationCount}</p></Card>
+        <Card title="Today Bookings">{loading && !queue.length ? <Skeleton className="h-8 w-16" /> : <p className="kpi-value">{queue.length}</p>}</Card>
+        <Card title="Patient Check-Ins">{loading && !queue.length ? <Skeleton className="h-8 w-16" /> : <p className="kpi-value">{queue.length}</p>}</Card>
+        <Card title="Open Tasks">{loading && !queue.length ? <Skeleton className="h-8 w-16" /> : <p className="kpi-value">{openTasks}</p>}</Card>
+        <Card title="Notifications">{loading && !queue.length ? <Skeleton className="h-8 w-16" /> : <p className="kpi-value">{notificationCount}</p>}</Card>
       </div>
 
       <Card
@@ -71,12 +72,14 @@ export default function ReceptionistDashboardPage() {
         }
       >
         <div className="space-y-2">
+          {loading && !queue.length &&
+            Array.from({ length: 4 }).map((_, idx) => <Skeleton key={`queue-skeleton-${idx}`} className="h-10 w-full rounded-lg" />)}
           {queue.slice(0, 4).map((row, idx) => (
             <div key={idx} className="rounded-lg border border-[var(--border)] bg-[#f6fbfc] px-3 py-2 text-sm">
               Token {String(row.token_number || "-")} - Appointment {String(row.appointment_id || "-")} ({String(row.status || "-")})
             </div>
           ))}
-          {!queue.length && <p className="muted text-sm">No active queue entries.</p>}
+          {!loading && !queue.length && <p className="muted text-sm">No active queue entries.</p>}
         </div>
       </Card>
 

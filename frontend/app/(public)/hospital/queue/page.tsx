@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Card from "@/components/ui/Card";
+import Skeleton from "@/components/ui/Skeleton";
 import { hospitalQueue } from "@/lib/services";
 import { useToast } from "@/context/ToastContext";
 import { firstPresent, formatNameWithId } from "@/lib/display";
@@ -43,6 +44,15 @@ export default function HospitalQueuePage() {
             </tr>
           </thead>
           <tbody>
+            {loading && !rows.length &&
+              Array.from({ length: 6 }).map((_, idx) => (
+                <tr key={`public-queue-skeleton-${idx}`}>
+                  <td><Skeleton className="h-4 w-40" /></td>
+                  <td><Skeleton className="h-4 w-28" /></td>
+                  <td><Skeleton className="h-4 w-14" /></td>
+                  <td><Skeleton className="h-4 w-20" /></td>
+                </tr>
+              ))}
             {rows.map((row, idx) => (
               <tr key={idx}>
                 <td>
@@ -58,7 +68,7 @@ export default function HospitalQueuePage() {
                 <td>{String(row.status || "")}</td>
               </tr>
             ))}
-            {!rows.length && (
+            {!loading && !rows.length && (
               <tr>
                 <td colSpan={4} className="muted text-center">No patients in queue.</td>
               </tr>

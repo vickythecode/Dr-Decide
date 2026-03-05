@@ -162,7 +162,7 @@ export default function AuthForm({ mode, fixedRole }: { mode: Mode; fixedRole?: 
                 <button
                   key={item}
                   type="button"
-                  className={`tab ${role === item ? "tab-active" : ""}`}
+                  className={`tab cursor-pointer ${role === item ? "tab-active" : ""}`}
                   onClick={() => setRole(item)}
                 >
                   {item}

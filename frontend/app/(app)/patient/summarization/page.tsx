@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import Skeleton from "@/components/ui/Skeleton";
 import { useToast } from "@/context/ToastContext";
 import { patientAppointments, patientCarePlan, patientNotifications } from "@/lib/services";
 import { parseCarePlanText } from "@/lib/care-plan";
@@ -68,6 +69,17 @@ export default function PatientSummarizationPage() {
   return (
     <Card title="Summarization History" action={<Button loading={loading} onClick={load}>Refresh</Button>}>
       <div className="space-y-3">
+        {loading && !blocks.length &&
+          Array.from({ length: 3 }).map((_, idx) => (
+            <div key={`summary-block-skeleton-${idx}`} className="rounded-xl border border-[var(--border)] bg-[#f7fbfc] p-3">
+              <Skeleton className="h-5 w-48" />
+              <div className="mt-2 space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-11/12" />
+                <Skeleton className="h-4 w-10/12" />
+              </div>
+            </div>
+          ))}
         {blocks.map((item) => (
           <div key={item.title} className="rounded-xl border border-[var(--border)] bg-[#f7fbfc] p-3">
             <p className="section-title">{item.title}</p>
@@ -78,7 +90,7 @@ export default function PatientSummarizationPage() {
             </ul>
           </div>
         ))}
-        {!blocks.length && <p className="muted text-sm">No summary data available.</p>}
+        {!loading && !blocks.length && <p className="muted text-sm">No summary data available.</p>}
       </div>
     </Card>
   );

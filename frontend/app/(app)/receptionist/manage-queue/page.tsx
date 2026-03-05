@@ -5,6 +5,7 @@ import { Users, Clock, PlayCircle, CheckCircle, RefreshCw } from "lucide-react";
 
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import Skeleton from "@/components/ui/Skeleton";
 import { useToast } from "@/context/ToastContext";
 import { firstPresent, formatNameWithId } from "@/lib/display";
 import { resolvePatientName } from "@/lib/identity";
@@ -82,6 +83,16 @@ export default function ReceptionistManageQueuePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
+              {loading && !queue.length &&
+                Array.from({ length: 6 }).map((_, idx) => (
+                  <tr key={`queue-skeleton-${idx}`}>
+                    <td className="p-4"><Skeleton className="h-6 w-16" /></td>
+                    <td className="p-4"><Skeleton className="h-4 w-40" /></td>
+                    <td className="p-4"><Skeleton className="h-4 w-28" /></td>
+                    <td className="p-4"><Skeleton className="h-6 w-24 rounded-full" /></td>
+                    <td className="p-4 text-right"><Skeleton className="ml-auto h-7 w-24" /></td>
+                  </tr>
+                ))}
               {queue.map((row, idx) => (
                 <tr key={`${String(row.token_number || idx)}-${idx}`} className="hover:bg-gray-50/50 transition-colors">
                   <td className="p-4">
@@ -139,7 +150,7 @@ export default function ReceptionistManageQueuePage() {
                 </tr>
               ))}
               
-              {!queue.length && !loading && (
+              {!loading && !queue.length && (
                 <tr>
                   <td colSpan={5} className="p-12 text-center">
                     <div className="flex flex-col items-center">

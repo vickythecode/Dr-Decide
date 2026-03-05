@@ -187,7 +187,7 @@ export default function ReceptionistGenerateTokenPage() {
                   {/* PRINT BUTTON */}
                   <button 
                     onClick={() => handlePrint(token)}
-                    className="p-1.5 bg-white border border-[var(--teal)] text-[var(--teal)] rounded-md hover:bg-[var(--teal)] hover:text-white transition-colors"
+                    className="p-1.5 bg-white border border-[var(--teal)] text-[var(--teal)] rounded-md hover:bg-[var(--teal)] hover:text-white transition-colors cursor-pointer"
                     title="Print Token"
                   >
                     <Printer className="w-4 h-4" />

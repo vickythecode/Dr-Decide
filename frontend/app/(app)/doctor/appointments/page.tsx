@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
+import Skeleton from "@/components/ui/Skeleton";
 import { useToast } from "@/context/ToastContext";
 import { doctorAppointments, updateAppointmentStatus } from "@/lib/services";
 import { DoctorAppointmentItem } from "@/types";
@@ -104,14 +105,14 @@ export default function DoctorAppointmentsPage() {
         
         <button
           onClick={() => handleStatusUpdate(appointmentId, "No-Show")}
-          className="rounded-2xl border border-orange-200 bg-orange-50 text-orange-600 px-3 py-1.5 text-xs font-medium hover:bg-orange-100 transition-colors whitespace-nowrap"
+          className="rounded-2xl border border-orange-200 bg-orange-50 text-orange-600 px-3 py-1.5 text-xs font-medium hover:bg-orange-100 transition-colors whitespace-nowrap cursor-pointer"
         >
           No-Show
         </button>
         
         <button
           onClick={() => handleStatusUpdate(appointmentId, "Cancelled")}
-          className="rounded-2xl border border-red-200 bg-red-50 text-red-600 px-3 py-1.5 text-xs font-medium hover:bg-red-100 transition-colors whitespace-nowrap"
+          className="rounded-2xl border border-red-200 bg-red-50 text-red-600 px-3 py-1.5 text-xs font-medium hover:bg-red-100 transition-colors whitespace-nowrap cursor-pointer"
         >
           Cancel
         </button>
@@ -138,6 +139,17 @@ export default function DoctorAppointmentsPage() {
               </tr>
             </thead>
             <tbody>
+              {loading && rows.length === 0 &&
+                Array.from({ length: 4 }).map((_, idx) => (
+                  <tr key={`today-skeleton-${idx}`} className="border-b border-[var(--border)] last:border-0">
+                    <td className="p-3"><Skeleton className="h-4 w-24" /></td>
+                    <td className="p-3"><Skeleton className="h-4 w-36" /></td>
+                    <td className="p-3"><Skeleton className="h-4 w-28" /></td>
+                    <td className="p-3"><Skeleton className="h-4 w-40" /></td>
+                    <td className="p-3"><Skeleton className="h-6 w-24 rounded-full" /></td>
+                    <td className="p-3"><Skeleton className="h-6 w-28" /></td>
+                  </tr>
+                ))}
               {todayRows.map((row, idx) => {
                 const patientId = String(row.patient_id || "");
                 const patientName = String(row.patient_name || "Unknown Patient"); 
@@ -160,7 +172,7 @@ export default function DoctorAppointmentsPage() {
                 </tr>
                 );
               })}
-              {!todayRows.length && (
+              {!loading && !todayRows.length && (
                 <tr>
                   <td colSpan={6} className="p-6 text-center text-[var(--muted)]">No appointments scheduled for today.</td>
                 </tr>
@@ -208,6 +220,17 @@ export default function DoctorAppointmentsPage() {
               </tr>
             </thead>
             <tbody>
+              {loading && rows.length === 0 &&
+                Array.from({ length: 8 }).map((_, idx) => (
+                  <tr key={`all-skeleton-${idx}`} className="border-b border-[var(--border)] last:border-0">
+                    <td className="p-3"><Skeleton className="h-4 w-24" /></td>
+                    <td className="p-3"><Skeleton className="h-4 w-36" /></td>
+                    <td className="p-3"><Skeleton className="h-4 w-28" /></td>
+                    <td className="p-3"><Skeleton className="h-4 w-40" /></td>
+                    <td className="p-3"><Skeleton className="h-6 w-24 rounded-full" /></td>
+                    <td className="p-3"><Skeleton className="h-6 w-28" /></td>
+                  </tr>
+                ))}
               {filteredAllRows.map((row, idx) => {
                 const patientId = String(row.patient_id || "");
                 const patientName = String(row.patient_name || "Unknown Patient");
@@ -230,7 +253,7 @@ export default function DoctorAppointmentsPage() {
                 </tr>
                 );
               })}
-              {!filteredAllRows.length && (
+              {!loading && !filteredAllRows.length && (
                 <tr>
                   <td colSpan={6} className="p-6 text-center text-sm text-[var(--muted)]">
                     {rows.length === 0 

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import Skeleton from "@/components/ui/Skeleton";
 import { useToast } from "@/context/ToastContext";
 import { doctorAppointments, doctorDashboardStats, doctorPatients } from "@/lib/services";
 import { DoctorAppointmentItem, DoctorDashboardResponse, DoctorPatientsItem } from "@/types";
@@ -105,16 +106,18 @@ export default function DoctorDashboardPage() {
       </Card>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <Card title="Total Patients"><p className="kpi-value">{totalPatients ?? "-"}</p></Card>
-        <Card title="Today Appointments"><p className="kpi-value">{todayAppointmentsCount}</p></Card>
-        <Card title="Current Daily Limit"><p className="kpi-value">{dailyLimit ?? "-"}</p></Card>
-        <Card title="Care Plans"><p className="kpi-value">{stats?.metrics.care_plans_generated ?? "-"}</p></Card>
-        <Card title="Critical Alerts"><p className="kpi-value">{stats?.metrics.critical_alerts ?? "-"}</p></Card>
+        <Card title="Total Patients">{loading && totalPatients === null ? <Skeleton className="h-8 w-16" /> : <p className="kpi-value">{totalPatients ?? "-"}</p>}</Card>
+        <Card title="Today Appointments">{loading && !appointmentRows.length ? <Skeleton className="h-8 w-16" /> : <p className="kpi-value">{todayAppointmentsCount}</p>}</Card>
+        <Card title="Current Daily Limit">{loading && dailyLimit === null ? <Skeleton className="h-8 w-16" /> : <p className="kpi-value">{dailyLimit ?? "-"}</p>}</Card>
+        <Card title="Care Plans">{loading && !stats ? <Skeleton className="h-8 w-16" /> : <p className="kpi-value">{stats?.metrics.care_plans_generated ?? "-"}</p>}</Card>
+        <Card title="Critical Alerts">{loading && !stats ? <Skeleton className="h-8 w-16" /> : <p className="kpi-value">{stats?.metrics.critical_alerts ?? "-"}</p>}</Card>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
         <Card title="Upcoming Appointments (Top 5)" action={<Button loading={loading} onClick={load}>Refresh</Button>}>
           <div className="space-y-2">
+            {loading && !todaysAppointments.length &&
+              Array.from({ length: 5 }).map((_, idx) => <Skeleton key={`today-appt-skeleton-${idx}`} className="h-12 w-full rounded-lg" />)}
             {todaysAppointments.map((row, idx) => {
               const patientName = String(row.patient_name || "Unknown Patient");
               const status = String(row.status || "Scheduled");
@@ -146,7 +149,7 @@ export default function DoctorDashboardPage() {
               );
             })}
             
-            {!todaysAppointments.length && <p className="muted text-sm">No appointments for today.</p>}
+            {!loading && !todaysAppointments.length && <p className="muted text-sm">No appointments for today.</p>}
 
             {/* Subtle link at the bottom that blends perfectly */}
             {todaysAppointments.length > 0 && (
@@ -161,20 +164,28 @@ export default function DoctorDashboardPage() {
 
         <Card title="Total Appointments Today (Graph)">
           <div className="space-y-3">
-            <div>
-              <div className="mb-1 flex justify-between text-sm">
-                <span>Booked</span>
-                <span>{totalBookedByHour}</span>
+            {loading && !stats ? (
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-3 w-full rounded-full" />
+                <Skeleton className="h-4 w-40" />
               </div>
-              <div className="h-3 rounded-full bg-[#dceff1]">
-                <div
-                  className="h-3 rounded-full bg-[var(--teal)]"
-                  style={{
-                    width: `${totalLimitByHour ? Math.min(100, (totalBookedByHour / totalLimitByHour) * 100) : 0}%`,
-                  }}
-                />
+            ) : (
+              <div>
+                <div className="mb-1 flex justify-between text-sm">
+                  <span>Booked</span>
+                  <span>{totalBookedByHour}</span>
+                </div>
+                <div className="h-3 rounded-full bg-[#dceff1]">
+                  <div
+                    className="h-3 rounded-full bg-[var(--teal)]"
+                    style={{
+                      width: `${totalLimitByHour ? Math.min(100, (totalBookedByHour / totalLimitByHour) * 100) : 0}%`,
+                    }}
+                  />
+                </div>
               </div>
-            </div>
+            )}
             <p className="muted text-sm">Capacity today: {totalBookedByHour}/{dailyLimit ?? totalLimitByHour ?? 0}</p>
             <div className="flex items-center gap-2">
               <Button variant="secondary" className="px-2 py-1 text-xs" onClick={() => adjustDailyLimit(-1)}>-</Button>
@@ -187,13 +198,20 @@ export default function DoctorDashboardPage() {
 
       <Card title="Patient Adherence Overview">
         <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+          {loading && !patients.length &&
+            Array.from({ length: 4 }).map((_, idx) => (
+              <div key={`adherence-skeleton-${idx}`} className="rounded-lg border border-[var(--border)] p-3">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="mt-2 h-7 w-10" />
+              </div>
+            ))}
           {Object.entries(statusCounts).map(([label, value]) => (
             <div key={label} className="rounded-lg border border-[var(--border)] p-3">
               <p className="text-xs text-[var(--muted)]">{label}</p>
               <p className="title mt-1 text-2xl">{value}</p>
             </div>
           ))}
-          {!Object.keys(statusCounts).length && (
+          {!loading && !Object.keys(statusCounts).length && (
             <p className="muted text-sm">No patient adherence status available.</p>
           )}
         </div>

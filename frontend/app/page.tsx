@@ -3,7 +3,7 @@ import Image from "next/image";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-[var(--bg)] p-4 md:p-8">
+    <div className="min-h-screen bg-white p-4 md:p-8">
       <div className="mx-auto grid max-w-[1200px] gap-6 lg:grid-cols-[1.2fr_1fr]">
         <section className="home-hero panel p-6 md:p-8">
           <p className="pill inline-block">Smart Care Coordination</p>

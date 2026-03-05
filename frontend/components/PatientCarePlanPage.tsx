@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { CheckCircle2, Clock, Activity, Calendar } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import Skeleton from "@/components/ui/Skeleton";
 import { useToast } from "@/context/ToastContext";
 import { patientCarePlan } from "@/lib/services";
 import { parseCarePlanText } from "@/lib/care-plan";
@@ -143,7 +144,45 @@ export default function PatientCarePlanPage() {
     const progressPercent = tasks.length > 0 ? (completedToday.length / tasks.length) * 100 : 0;
 
     return (
-        <div className="space-y-3 max-w-4xl mx-auto">
+        <div className="space-y-3 max-w-4xl mx-auto px-2 sm:px-0">
+            {loading && !plan ? (
+                <>
+                    <Card title={`Daily Recovery Tasks - ${new Date().toLocaleDateString()}`}>
+                        <div className="mb-6 space-y-2">
+                            <Skeleton className="h-4 w-40" />
+                            <Skeleton className="h-2.5 w-full rounded-full" />
+                        </div>
+                        <div className="space-y-2">
+                            {Array.from({ length: 5 }).map((_, idx) => (
+                                <div key={`task-skeleton-${idx}`} className="rounded-xl border p-4 border-[var(--border)] bg-white">
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <Skeleton className="h-4 w-full sm:w-3/4" />
+                                        <Skeleton className="h-6 w-full sm:w-24 rounded-full" />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </Card>
+                    <div className="grid md:grid-cols-2 gap-6">
+                        <Card title="Visit Summarization">
+                            <div className="space-y-3">
+                                {Array.from({ length: 3 }).map((_, idx) => (
+                                    <Skeleton key={`summary-skeleton-${idx}`} className="h-14 w-full rounded-lg" />
+                                ))}
+                            </div>
+                        </Card>
+                        <div className="space-y-6">
+                            <Card title="Follow Up Reminder">
+                                <Skeleton className="h-16 w-full rounded-lg" />
+                            </Card>
+                            <Card title="Additional Notes">
+                                <Skeleton className="h-24 w-full rounded-md" />
+                            </Card>
+                        </div>
+                    </div>
+                </>
+            ) : (
+                <>
 
             {/* 1. PROGRESS BAR WIDGET */}
             <Card title={`Daily Recovery Tasks - ${new Date().toLocaleDateString()}`}>
@@ -164,11 +203,11 @@ export default function PatientCarePlanPage() {
                     {tasks.map((task) => (
                         <div
                             key={task.id}
-                            className={`flex items-center justify-between rounded-xl border p-4 transition-colors ${task.done ? "bg-green-50/50 border-green-100 opacity-80" : "bg-white border-[var(--border)]"
+                            className={`flex flex-col gap-3 rounded-xl border p-4 transition-colors sm:flex-row sm:items-center sm:justify-between ${task.done ? "bg-green-50/50 border-green-100 opacity-80" : "bg-white border-[var(--border)]"
                                 }`}
                         >
                             
-                            <div className="flex flex-1 items-center gap-2 pl-1">
+                            <div className="flex w-full flex-1 items-center gap-2 pl-1">
                                 <Clock className={`w-5 h-5 shrink-0 ${task.done ? "text-green-500" : "text-[var(--teal)]"}`} />
                                 <p className={`text-sm ${task.done ? "line-through text-green-700" : "text-gray-700 font-medium"}`}>
                                     {task.title}
@@ -176,7 +215,7 @@ export default function PatientCarePlanPage() {
                             </div>
 
                             <Button
-                                className={`h-6 px-4 text-xs rounded-full ${task.done ? "bg-green-500 text-white border-none" : ""}`}
+                                className={` w-full sm:w-auto ${task.done ? "bg-green-500 text-white border-none" : ""}`}
                                 variant={task.done ? "secondary" : "primary"}
                                 disabled={task.done}
                                 onClick={() => markDone(task.id, task.title)}
@@ -215,11 +254,13 @@ export default function PatientCarePlanPage() {
 
                     {!!rawPlanText && (
                         <Card title="Additional Notes">
-                            <p className="whitespace-pre-wrap text-sm text-gray-600 p-2 bg-gray-50 rounded-md border border-gray-100">{rawPlanText}</p>
+                            <p className="whitespace-pre-wrap break-words text-sm text-gray-600 p-2 bg-gray-50 rounded-md border border-gray-100">{rawPlanText}</p>
                         </Card>
                     )}
                 </div>
             </div>
+                </>
+            )}
         </div>
     );
 }
