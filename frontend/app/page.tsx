@@ -3,8 +3,8 @@ import Image from "next/image";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-white p-4 md:p-8">
-      <div className="mx-auto grid max-w-[1200px] gap-6 lg:grid-cols-[1.2fr_1fr]">
+    <div className="flex min-h-screen items-center justify-center bg-white p-4 md:p-8">
+      <div className="mx-auto grid w-full max-w-[1200px] gap-6 lg:grid-cols-[1.2fr_1fr]">
         <section className="home-hero panel p-6 md:p-8">
           <p className="pill inline-block">Smart Care Coordination</p>
           <h1 className="title mt-4 text-4xl leading-tight md:text-5xl item-center">
