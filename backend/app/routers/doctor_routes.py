@@ -347,6 +347,7 @@ async def submit_consultation(
 
     # 7. Return the response
     return CarePlanResponse(
+        doctor_id=doctor_id,
         patient_id=patient_id,
         appointment_id=appointment_id,
         simplified_plan=ai_simplified_plan,
