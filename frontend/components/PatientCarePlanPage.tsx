@@ -120,6 +120,7 @@ export default function PatientCarePlanPage() {
             // Connect to the POST /log route we built
             await api.post("/api/adherence/log", {
                 appointment_id: plan.appointment_id,
+                doctor_id: plan.doctor_id || "unknown", // Backend can extract from token if needed
                 patient_id: plan.patient_id || "unknown", // Backend can extract from token if needed
                 task_id: taskId,
                 task_title: title

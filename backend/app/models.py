@@ -52,6 +52,7 @@ class ConsultationDetails(BaseModel):
 
 class CarePlanResponse(BaseModel):
     patient_id: str
+    doctor_id: str
     appointment_id: str
     simplified_plan: str
     follow_up_reminder: str

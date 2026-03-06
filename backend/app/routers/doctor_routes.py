@@ -10,7 +10,6 @@ import boto3
 import os
 import json
 from datetime import datetime
-# import anthropic
 
 
 router = APIRouter(prefix="/api/doctor", tags=["Doctor"])

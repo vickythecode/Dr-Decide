@@ -100,6 +100,7 @@ async def get_care_plan(
         
         return {
             "appointment_id": latest_plan.get("appointment_id"),
+            'doctor_id': latest_plan.get("doctor_id"),
             "patient_id": latest_plan.get("patient_id"),
             "simplified_plan": latest_plan.get("simplified_plan"), 
             "follow_up_reminder": latest_plan.get("follow_up_reminder"),
@@ -339,6 +340,7 @@ async def get_care_plan_by_appointment_id(appointment_id: str):
 
         return CarePlanResponse(
             patient_id=item.get("patient_id"),
+            doctor_id=item.get("doctor_id"),
             appointment_id=item.get("appointment_id"),
             simplified_plan=item.get("simplified_plan", "{}"),
             follow_up_reminder=item.get("follow_up_reminder") or item.get("follow_up_details") or "None",
