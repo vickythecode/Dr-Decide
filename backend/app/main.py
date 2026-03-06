@@ -1,5 +1,5 @@
 import os
-from mangum import Mangum
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -34,5 +34,5 @@ app.include_router(hospital_routes.router)
 @app.get("/")
 def health_check():
     return {"status": "Dr. Decide API is running securely!"}
-handler = Mangum(app) #
+
 # Run with: uvicorn app.main:app --reload
