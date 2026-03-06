@@ -34,11 +34,14 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt -t .
+          # REMOVE BLOAT: Lambda already has these built-in!
+          rm -rf boto3* botocore* s3transfer* urllib3*
 
-      # 4. Zip everything up (excluding git, virtual env, and cache files)
+      # 4. Zip everything up
       - name: Create Zip Archive
         run: |
           zip -r9 deployment_package.zip . -x "*.git*" "venv/*" "__pycache__/*"
+
 
       # 5. Push the Zip to AWS Lambda
       - name: Deploy to AWS Lambda
