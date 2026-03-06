@@ -16,6 +16,7 @@ class TaskLogRequest(BaseModel):
 dynamodb = boto3.resource('dynamodb', region_name=os.getenv("AWS_DEFAULT_REGION", "us-east-1"))
 adherence_logs_table = dynamodb.Table('DrDecideAdherenceLogs') 
 
+
 @router.post("/log")
 async def log_daily_task(req: TaskLogRequest):
     """Patient clicks 'Mark Done' for a specific time of day."""
