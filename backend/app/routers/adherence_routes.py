@@ -197,7 +197,7 @@ async def get_patient_recovery_status(appointment_id: str):
 
 
     
-@router.get("/all-stats/") 
+@router.get("/all-stats") 
 async def get_all_patients_summary(current_user: dict = Depends(require_role("Doctor"))):
     try:
         doctor_id = current_user['sub'] 
