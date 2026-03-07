@@ -32,6 +32,7 @@ function DoctorConsultationForm() {
     current_examination: "",
     medicines_prescribed: "",
     follow_up_details: "",
+    follow_up_date: "", // Will hold YYYY-MM-DD
   });
 
   // Pull details from the URL parameters
@@ -52,7 +53,7 @@ function DoctorConsultationForm() {
     }));
   }, [searchParams]);
 
-  // --- CORRECTED DRAG AND DROP HANDLERS WITH PROPER TYPES ---
+  // --- DRAG AND DROP HANDLERS ---
   const handleDragOver = (e: React.DragEvent<HTMLLabelElement>) => {
     e.preventDefault(); 
     setIsDragging(true);
@@ -74,6 +75,11 @@ function DoctorConsultationForm() {
 
   // --- SUBMISSION HANDLER ---
   async function submit() {
+    if (!form.follow_up_date) {
+      pushToast("Please select a follow-up date", "error");
+      return;
+    }
+
     setLoading(true);
     try {
       // 1. Build the FormData object to support both text and files
@@ -83,6 +89,7 @@ function DoctorConsultationForm() {
       formData.append("current_examination", form.current_examination);
       formData.append("medicines_prescribed", form.medicines_prescribed);
       formData.append("follow_up_details", form.follow_up_details);
+      formData.append("follow_up_date", form.follow_up_date); 
       
       if (form.phone_number) formData.append("phone_number", form.phone_number);
       if (form.medical_history_text) formData.append("medical_history_text", form.medical_history_text);
@@ -185,8 +192,8 @@ function DoctorConsultationForm() {
             </div>
           )}
         </div>
-        {/* --- END FILE UPLOAD UI --- */}
         
+        {/* --- TEXT INPUTS --- */}
         <textarea
           className="flex min-h-[80px] w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--teal)]"
           value={form.medical_history_text}
@@ -214,6 +221,18 @@ function DoctorConsultationForm() {
           onChange={(e) => setForm((prev) => ({ ...prev, follow_up_details: e.target.value }))}
           placeholder="Follow up details"
         />
+
+        {/* --- DATE PICKER --- */}
+        <div className="flex flex-col space-y-1">
+          <label className="text-xs font-bold text-gray-500 uppercase">Follow-up Date</label>
+          <input
+            type="date"
+            className="flex h-10 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--teal)]"
+            value={form.follow_up_date}
+            min={new Date().toISOString().split("T")[0]} 
+            onChange={(e) => setForm((prev) => ({ ...prev, follow_up_date: e.target.value }))}
+          />
+        </div>
         
         <Button loading={loading} onClick={submit} className="w-full mt-4">
           Generate AI Care Plan & Complete

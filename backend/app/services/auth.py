@@ -1,7 +1,6 @@
 import urllib.request
 import os
 import json
-from app.models import UserConfirm
 import boto3
 from botocore.exceptions import ClientError
 from jose import jwk, jwt
@@ -21,12 +20,12 @@ APP_CLIENT_ID = os.getenv("COGNITO_APP_CLIENT_ID")
 # 3. Initialize Boto3 Cognito Client (For Login/Signup)
 cognito_client = boto3.client('cognito-idp', region_name=REGION)
 
-
+# --- PART 0: COGNITO KEYS INITIALIZATION ---
 # --- PART 1: LOGIN & SIGNUP FUNCTIONS ---
 
 def sign_up_user(email, password, role):
     try:
-        response = cognito_client.sign_up(
+        cognito_client.sign_up(
             ClientId=APP_CLIENT_ID,
             Username=email,
             Password=password,
@@ -54,7 +53,30 @@ def login_user(email, password):
     except ClientError as e:
         return {"error": e.response['Error']['Message']}
 
-
+def change_cognito_password(access_token: str, old_password: str, new_password: str) -> None:
+    """
+    Communicates with AWS Cognito to change the user's password using their active Access Token.
+    Raises FastAPI HTTPExceptions if Cognito rejects the request.
+    """
+    try:
+        cognito_client.change_password(
+            PreviousPassword=old_password,
+            ProposedPassword=new_password,
+            AccessToken=access_token
+        )
+        
+    except cognito_client.exceptions.NotAuthorizedException:
+        raise HTTPException(status_code=400, detail="Incorrect current password or expired session.")
+        
+    except cognito_client.exceptions.InvalidPasswordException:
+        raise HTTPException(status_code=400, detail="New password does not meet security requirements.")
+        
+    except cognito_client.exceptions.LimitExceededException:
+        raise HTTPException(status_code=429, detail="Too many attempts. Please try again later.")
+        
+    except Exception as e:
+        print(f"Cognito Change Password Error: {e}")
+        raise HTTPException(status_code=500, detail="An error occurred while changing your password.")
 # --- PART 2: TOKEN VERIFICATION & RBAC ---
 
 keys = []

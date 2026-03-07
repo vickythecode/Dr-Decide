@@ -1,11 +1,13 @@
 import os
 import boto3
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel # 1. ADDED MISSING IMPORT
-
-# Removed UpdateStatusRequest from this import since it's defined below
-from app.models import UserLogin, UserSignUp, UserConfirm, AppointmentStatus
-from app.services.auth import  sign_up_user, login_user, confirm_sign_up
+from fastapi import APIRouter, HTTPException, Depends, Security
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from pydantic import BaseModel 
+from app.models import UserLogin, UserSignUp, UserConfirm, AppointmentStatus, ChangePasswordRequest
+from app.services.auth import  sign_up_user, login_user, confirm_sign_up, change_cognito_password, verify_cognito_token
+from dotenv import load_dotenv
+security_scheme = HTTPBearer()
+load_dotenv()
 
 # 2. SEPARATED THE ROUTERS SO PATHS DON'T GET MIXED UP
 auth_router = APIRouter(prefix="/api/auth", tags=["Authentication"])
@@ -34,19 +36,7 @@ async def login(user: UserLogin):
         "access_token": response['AccessToken'],
         "id_token": response['IdToken']
     }
-class ForceChangePasswordRequest(BaseModel):
-    email: str
-    new_password: str
-    session: str
 
-@auth_router.post("/force-change-password")
-async def force_change_password(req: ForceChangePasswordRequest):
-    result = respond_to_auth_challenge(req.email, req.new_password, req.session)
-    
-    if "error" in result:
-        raise HTTPException(status_code=400, detail=result["error"])
-        
-    return result
 @auth_router.post("/confirm")
 async def confirm_signup(user_data: UserConfirm):
     confirm_sign_up(user_data.email, user_data.code)
@@ -77,3 +67,32 @@ async def update_appointment_status(appointment_id: str, request: UpdateStatusRe
     except Exception as e:
         print(f"DynamoDB Update Error: {e}")
         raise HTTPException(status_code=500, detail="Failed to update appointment status.")
+
+@auth_router.post("/change-password")
+def change_password(
+    request: ChangePasswordRequest,
+    claims: dict = Depends(verify_cognito_token), # 1. Validates the JWT cryptographically
+    credentials: HTTPAuthorizationCredentials = Security(security_scheme) # 2. Grabs the raw string
+):
+    """Securely updates a logged-in user's password."""
+    
+    # 3. AWS Cognito STRICTLY requires an Access Token for this, not an ID Token.
+    # Your verifier allows both, so we must double-check here:
+    if claims.get('token_use') != 'access':
+        raise HTTPException(
+            status_code=400, 
+            detail="You must provide an Access Token to change a password, but an ID Token was provided."
+        )
+
+    # 4. Extract the raw string from the credentials object
+    raw_access_token = credentials.credentials
+
+    # 5. Send it to AWS Cognito via your auth.py file
+    change_cognito_password(
+        access_token=raw_access_token,
+        old_password=request.old_password,
+        new_password=request.new_password
+    )
+    
+    return {"message": "Password updated successfully!"}
+    

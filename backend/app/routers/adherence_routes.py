@@ -17,108 +17,104 @@ class TaskLogRequest(BaseModel):
     task_title: str   # e.g., "Take Paracetamol"
 dynamodb = boto3.resource('dynamodb', region_name=os.getenv("AWS_DEFAULT_REGION", "us-east-1"))
 adherence_logs_table = dynamodb.Table('DrDecideAdherenceLogs') 
+care_plans_table = dynamodb.Table('DrDecideCarePlans')
 patient_table = dynamodb.Table('DrDecidePatients')
 
 
 @router.post("/log")
-async def log_daily_task(req: TaskLogRequest):
-    """Patient clicks 'Mark Done' for a specific time of day."""
-    today_str = date.today().isoformat()
-    log_id = f"{req.appointment_id}#{req.task_id}#{today_str}"
-    
-    record = {
-        "log_id": log_id, 
-        "appointment_id": req.appointment_id, 
-        "doctor_id": req.doctor_id, 
-        "patient_id": req.patient_id,
-        "task_id": req.task_id,
-        "task_title": req.task_title,
-        "date_logged": today_str,
-        "timestamp": datetime.utcnow().isoformat(),
-        "status": "Done"
-    }
-    
+async def log_task_completion(request: TaskLogRequest):
+    """Patient clicks 'Mark Done' on a daily task."""
     try:
-        adherence_logs_table.put_item(Item=record)
-        return {"message": "Task logged for today", "log": record}
+        now = datetime.utcnow()
+        today_str = date.today().isoformat()
+        log_id = f"LOG-{uuid.uuid4().hex[:8].upper()}"
+        
+        log_item = {
+            'log_id': log_id, # Primary Key
+            'appointment_id': request.appointment_id, # Global Secondary Index for fast querying
+            'patient_id': request.patient_id,
+            'doctor_id': request.doctor_id,
+            'task_id': request.task_id,
+            'task_title': request.task_title,
+            'timestamp': now.isoformat(),
+            'date_logged': today_str # Storing the date makes fetching "Today's tasks" very fast
+        }
+        
+        adherence_logs_table.put_item(Item=log_item)
+        
+        return {"message": "Task logged successfully", "log_id": log_id}
+        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    """Patient clicks 'Mark Done' for a specific time of day."""
-    today_str = date.today().isoformat() # e.g., "2026-03-05"
-    log_id = f"{req.appointment_id}#{req.task_id}#{today_str}"
-    
-    record = {
-        "log_id": log_id, # Partition Key
-        "appointment_id": req.appointment_id, # GSI for doctor to search
-        "patient_id": req.patient_id,
-        "task_id": req.task_id,
-        "task_title": req.task_title,
-        "date_logged": today_str,
-        "timestamp": datetime.utcnow().isoformat(),
-        "status": "Done"
-    }
-    
-    try:
-        # Assuming you have initialized adherence_logs_table
-        adherence_logs_table.put_item(Item=record)
-        return {"message": "Task logged for today", "log": record}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error logging task: {e}")
+        raise HTTPException(status_code=500, detail="Failed to log task completion.")
 
+# --- 2. DOCTOR ACTION: VIEWING ADHERENCE MATH ---
 @router.get("/stats/{appointment_id}")
 async def get_patient_recovery_status(appointment_id: str):
+    """Calculates adherence % based on elapsed days and daily tasks."""
     try:
-        # 1. Fetch all logs for this appointment
+        # 1. Fetch all logs for this specific care plan
         response = adherence_logs_table.query(
-            IndexName='appointment_id-index',
+            IndexName='appointment_id-index', # Make sure you have this GSI in DynamoDB!
             KeyConditionExpression=Key('appointment_id').eq(appointment_id)
         )
         logs = response.get('Items', [])
         logs.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
         
-        # 2. Extract Patient ID (The Fix is here)
-        patient_id = "Unknown"
-        if logs:
-            patient_id = logs[0].get('patient_id')
-        else:
-            # FIX: If no logs exist, find the patient_id from the original appointment
-            # Replace 'appointments_table' with your actual Appointments table variable name
-            appt_response = appointments_table.get_item(Key={'appointment_id': appointment_id})
-            appt_item = appt_response.get('Item')
-            if appt_item:
-                patient_id = appt_item.get('patient_id', 'Unknown')
+        # 2. Fetch the Care Plan to get the baseline math variables
+        plan_response = care_plans_table.get_item(Key={'appointment_id': appointment_id})
+        plan = plan_response.get('Item')
+        
+        if not plan:
+            raise HTTPException(status_code=404, detail="Care plan not found.")
 
-        # 3. Fetch Patient Name
-        patient_name = "Unknown Patient"
-        if patient_id != "Unknown":
-            p_item = patient_table.get_item(
-                Key={'patient_id': patient_id},
-                ProjectionExpression='full_name'
-            ).get('Item', {})
-            patient_name = p_item.get('full_name', 'Unknown Patient')
-
-        # 4. Calculate Stats (Same as before)
+        # Extract math variables
+        today = date.today()
+        start_date_str = plan.get('created_at', today.isoformat())[:10]
+        follow_up_date_str = plan.get('follow_up_date', today.isoformat())[:10]
+        tasks_per_day = int(plan.get('daily_task_count', 4))
+        patient_id = plan.get('patient_id')
+        
+        # 3. Perform Date Math
+        start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+        follow_up_date = datetime.strptime(follow_up_date_str, "%Y-%m-%d").date()
+        
+        # Stop expecting new tasks if the follow-up date has passed
+        calc_end_date = min(today, follow_up_date) 
+        
+        # Calculate days elapsed (including day 1)
+        days_elapsed = (calc_end_date - start_date).days + 1
+        if days_elapsed < 1: 
+            days_elapsed = 1
+            
+        expected_tasks_to_date = days_elapsed * tasks_per_day
         total_completed = len(logs)
-        expected_tasks = 20 
-        adherence_percentage = min(int((total_completed / expected_tasks) * 100), 100) if expected_tasks > 0 else 0
-        
-        if adherence_percentage >= 75:
-            status_text = "On Track"
-        elif adherence_percentage >= 50:
-            status_text = "Needs Attention"
-        else:
-            status_text = "Critical"
 
-        today_str = date.today().isoformat()
+        # 4. Calculate Percentage & Status Color
+        if expected_tasks_to_date > 0:
+            adherence_percentage = min(int((total_completed / expected_tasks_to_date) * 100), 100)
+        else:
+            adherence_percentage = 0
+
+        if adherence_percentage >= 75: status_text = "On Track"
+        elif adherence_percentage >= 50: status_text = "Needs Attention"
+        else: status_text = "Critical"
+
+        # 5. Extract today's tasks for the Patient UI progress bar
+        today_str = today.isoformat()
         todays_logs = [log['task_id'] for log in logs if log.get('date_logged') == today_str]
-        last_active = logs[0].get('timestamp') if logs else None
-        
+
+        # 6. Fetch the patient name for the Doctor UI
+        patient_name = "Unknown Patient"
+        try:
+            p_item = patient_table.get_item(Key={'patient_id': patient_id}).get('Item', {})
+            patient_name = p_item.get('patient_name', 'Unknown Patient')
+        except:
+            pass
+
+        # Format recent logs for the timeline
         recent_logs_formatted = [
-            {
-                "id": log.get("log_id"),
-                "task_title": log.get("task_title", "Unknown Task"),
-                "logged_at": log.get("timestamp")
-            }
+            {"id": log.get("log_id"), "task_title": log.get("task_title"), "logged_at": log.get("timestamp")}
             for log in logs[:10]
         ]
 
@@ -126,88 +122,19 @@ async def get_patient_recovery_status(appointment_id: str):
             "appointment_id": appointment_id,
             "patient_id": patient_id,
             "patient_name": patient_name,
+            "follow_up_date": follow_up_date_str,
+            "days_elapsed": days_elapsed,
             "total_completed": total_completed,
+            "expected_tasks_to_date": expected_tasks_to_date,
             "adherence_percentage": adherence_percentage,
             "status": status_text,
-            "last_active": last_active,
+            "last_active": logs[0].get('timestamp') if logs else None,
             "recent_logs": recent_logs_formatted,
-            "todays_completed_tasks": todays_logs 
+            "todays_completed_tasks": todays_logs # Used by the Patient UI
         }
     except Exception as e:
         print(f"Error fetching stats for {appointment_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-    """Doctor views the patient's adherence score and recent activity."""
-    try:
-        # 1. Fetch all logs for this appointment
-        response = adherence_logs_table.query(
-            IndexName='appointment_id-index',
-            KeyConditionExpression=Key('appointment_id').eq(appointment_id)
-        )
-        logs = response.get('Items', [])
-        
-        # 2. Sort logs by timestamp descending (newest first)
-        logs.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
-        
-        # 3. Get today's completed tasks
-        today_str = date.today().isoformat()
-        todays_logs = [log['task_id'] for log in logs if log.get('date_logged') == today_str]
-        
-        # 4. Calculate Overall Adherence
-        total_completed = len(logs)
-        expected_tasks = 20 
-        adherence_percentage = min(int((total_completed / expected_tasks) * 100), 100) if expected_tasks > 0 else 0
-        
-        if adherence_percentage >= 75:
-            status_text = "On Track"
-        elif adherence_percentage >= 50:
-            status_text = "Needs Attention"
-        else:
-            status_text = "Critical"
-
-        # 5. Extract IDs and FETCH PATIENT NAME
-        patient_id = "Unknown"
-        patient_name = "Unknown Patient"
-
-        if logs:
-            patient_id = logs[0].get('patient_id', 'Unknown')
-        else:
-            # OPTIONAL: If no logs exist, you might want to query your 
-            # Appointments table here to get the patient_id associated with this appt.
-            pass
-
-        # Fetch the name from the patient_table
-        if patient_id != "Unknown":
-            p_item = patient_table.get_item(
-                Key={'patient_id': patient_id},
-                ProjectionExpression='patient_name'
-            ).get('Item', {})
-            patient_name = p_item.get('patient_name', 'Unknown Patient')
-
-        last_active = logs[0].get('timestamp') if logs else None
-        
-        recent_logs_formatted = [
-            {
-                "id": log.get("log_id"),
-                "task_title": log.get("task_title", "Unknown Task"),
-                "logged_at": log.get("timestamp")
-            }
-            for log in logs[:10]
-        ]
-
-        return {
-            "appointment_id": appointment_id,
-            "patient_id": patient_id,
-            "patient_name": patient_name, # <-- Successfully Synced
-            "total_completed": total_completed,
-            "adherence_percentage": adherence_percentage,
-            "status": status_text,
-            "last_active": last_active,
-            "recent_logs": recent_logs_formatted,
-            "todays_completed_tasks": todays_logs 
-        }
-    except Exception as e:
-        print(f"Error fetching stats for {appointment_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 @router.get("/all-stats/") 
 async def get_all_patients_summary(current_user: dict = Depends(require_role("Doctor"))):

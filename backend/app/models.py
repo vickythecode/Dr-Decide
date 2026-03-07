@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel
 from typing import List, Optional
 
@@ -55,8 +57,11 @@ class CarePlanResponse(BaseModel):
     doctor_id: str
     appointment_id: str
     simplified_plan: str
-    follow_up_reminder: str
+    follow_up_reminder: str    
     status: str
+    created_at: str
+    follow_up_date: str
+    daily_task_count: int
     
 class UserSignUp(BaseModel):
     email: str
@@ -93,3 +98,6 @@ class UserConfirm(BaseModel):
     code: str
 class CapacityUpdateRequest(BaseModel):
     daily_limit: int
+class ChangePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { CheckCircle2, Clock, Activity, Calendar } from "lucide-react";
+import { CheckCircle2, Clock, Activity, Calendar, FileText } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Skeleton from "@/components/ui/Skeleton";
@@ -35,9 +35,6 @@ export default function PatientCarePlanPage() {
     const [completedToday, setCompletedToday] = useState<string[]>([]);
 
     const loadPlan = useCallback(async () => {
-        // FIX: Remove the restrictive check that was blocking the recent plan fetch
-        // if (!appointmentId && params !== null) return; 
-
         setLoading(true);
         try {
             let planData;
@@ -45,21 +42,19 @@ export default function PatientCarePlanPage() {
 
             // 1. Fetch the Base Care Plan
             if (appointmentId) {
-                // We have an ID in the URL, fetch that specific plan
                 const response = await api.get(`/api/patient/care-plan/${appointmentId}`);
                 planData = response.data;
             } else {
-                // No ID in URL, fetch the most recent plan
                 planData = await patientCarePlan();
                 if (!planData || !planData.appointment_id) {
                     throw new Error("No recent care plan found.");
                 }
-                activeAppointmentId = planData.appointment_id; // Capture ID from recent plan
+                activeAppointmentId = planData.appointment_id;
             }
 
             setPlan(planData);
 
-            // Parse text/JSON logic via your helper
+            // Parse text/JSON logic
             const parsed = parseCarePlanText(planData.simplified_plan || "");
             setPlanLines(parsed.planLines);
             setSummaryLines(parsed.summaryLines);
@@ -78,14 +73,11 @@ export default function PatientCarePlanPage() {
             if (activeAppointmentId) {
                 try {
                     const statsRes = await api.get(`/api/adherence/stats/${activeAppointmentId}`);
-
-                    // Use Set to prevent duplicate IDs causing progress to go over 100%
                     const rawTodaysCompleted = statsRes.data.todays_completed_tasks || [];
                     const todaysCompleted = Array.from(new Set(rawTodaysCompleted)) as string[];
 
                     setCompletedToday(todaysCompleted);
 
-                    // Mark tasks as done if their ID is in today's completed list
                     const updatedTasks = parsedTasks.map(task => ({
                         ...task,
                         done: todaysCompleted.includes(task.id)
@@ -93,7 +85,7 @@ export default function PatientCarePlanPage() {
                     setTasks(updatedTasks.slice(0, 8));
                 } catch (statsError) {
                     console.error("Could not fetch adherence stats", statsError);
-                    setTasks(parsedTasks.slice(0, 8)); // Fallback to all uncompleted
+                    setTasks(parsedTasks.slice(0, 8));
                 }
             } else {
                 setTasks(parsedTasks.slice(0, 8));
@@ -104,7 +96,8 @@ export default function PatientCarePlanPage() {
         } finally {
             setLoading(false);
         }
-    }, [appointmentId, pushToast]); // FIX: Removed 'params' from dependency array
+    }, [appointmentId, pushToast]); 
+
     async function markDone(taskId: string, title: string) {
         if (!plan?.appointment_id) {
             pushToast("Cannot log task: Missing appointment reference", "error");
@@ -117,11 +110,10 @@ export default function PatientCarePlanPage() {
             setTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, done: true } : task)));
             setCompletedToday((prev) => [...prev, taskId]);
 
-            // Connect to the POST /log route we built
             await api.post("/api/adherence/log", {
                 appointment_id: plan.appointment_id,
-                doctor_id: plan.doctor_id || "unknown", // Backend can extract from token if needed
-                patient_id: plan.patient_id || "unknown", // Backend can extract from token if needed
+                doctor_id: plan.doctor_id || "unknown",
+                patient_id: plan.patient_id || "unknown",
                 task_id: taskId,
                 task_title: title
             });
@@ -141,12 +133,17 @@ export default function PatientCarePlanPage() {
         loadPlan();
     }, [loadPlan]);
 
-    // Calculate Progress
     const progressPercent = tasks.length > 0 ? (completedToday.length / tasks.length) * 100 : 0;
 
+    // Helper to format the date nicely
+    const formattedFollowUpDate = plan?.follow_up_date 
+        ? new Date(plan.follow_up_date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+        : "Not specified";
+
     return (
-        <div className="space-y-3 max-w-4xl mx-auto px-2 sm:px-0">
+        <div className="space-y-4 max-w-5xl mx-auto px-2 sm:px-0 pb-12">
             {loading && !plan ? (
+                // --- SKELETON LOADER ---
                 <>
                     <Card title={`Daily Recovery Tasks - ${new Date().toLocaleDateString()}`}>
                         <div className="mb-6 space-y-2">
@@ -154,11 +151,11 @@ export default function PatientCarePlanPage() {
                             <Skeleton className="h-2.5 w-full rounded-full" />
                         </div>
                         <div className="space-y-2">
-                            {Array.from({ length: 5 }).map((_, idx) => (
+                            {Array.from({ length: 4 }).map((_, idx) => (
                                 <div key={`task-skeleton-${idx}`} className="rounded-xl border p-4 border-[var(--border)] bg-white">
                                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                         <Skeleton className="h-4 w-full sm:w-3/4" />
-                                        <Skeleton className="h-6 w-full sm:w-24 rounded-full" />
+                                        <Skeleton className="h-8 w-full sm:w-28 rounded-md" />
                                     </div>
                                 </div>
                             ))}
@@ -168,98 +165,118 @@ export default function PatientCarePlanPage() {
                         <Card title="Visit Summarization">
                             <div className="space-y-3">
                                 {Array.from({ length: 3 }).map((_, idx) => (
-                                    <Skeleton key={`summary-skeleton-${idx}`} className="h-14 w-full rounded-lg" />
+                                    <Skeleton key={`summary-skeleton-${idx}`} className="h-12 w-full rounded-lg" />
                                 ))}
                             </div>
                         </Card>
                         <div className="space-y-6">
-                            <Card title="Follow Up Reminder">
-                                <Skeleton className="h-16 w-full rounded-lg" />
-                            </Card>
-                            <Card title="Additional Notes">
-                                <Skeleton className="h-24 w-full rounded-md" />
+                            <Card title="Follow-Up Schedule">
+                                <Skeleton className="h-24 w-full rounded-lg" />
                             </Card>
                         </div>
                     </div>
                 </>
             ) : (
+                // --- MAIN CONTENT ---
                 <>
-
-            {/* 1. PROGRESS BAR WIDGET */}
-            <Card title={`Daily Recovery Tasks - ${new Date().toLocaleDateString()}`}>
-                <div className="mb-6">
-                    <div className="flex justify-between text-sm mb-2 font-medium">
-                        <span className="text-gray-500">Today's Progress</span>
-                        <span className="text-[var(--teal)]">{Math.round(progressPercent)}%</span>
-                    </div>
-                    <div className="w-full bg-gray-100 rounded-full h-2.5">
-                        <div
-                            className="bg-[var(--teal)] h-2.5 rounded-full transition-all duration-500"
-                            style={{ width: `${progressPercent}%` }}
-                        ></div>
-                    </div>
-                </div>
-
-                <div className="space-y-2">
-                    {tasks.map((task) => (
-                        <div
-                            key={task.id}
-                            className={`flex flex-col gap-3 rounded-xl border p-4 transition-colors sm:flex-row sm:items-center sm:justify-between ${task.done ? "bg-green-50/50 border-green-100 opacity-80" : "bg-white border-[var(--border)]"
-                                }`}
-                        >
-                            
-                            <div className="flex w-full flex-1 items-center gap-2 pl-1">
-                                <Clock className={`w-5 h-5 shrink-0 ${task.done ? "text-green-500" : "text-[var(--teal)]"}`} />
-                                <p className={`text-sm ${task.done ? "line-through text-green-700" : "text-gray-700 font-medium"}`}>
-                                    {task.title}
-                                </p>
+                    {/* 1. PROGRESS BAR & TASKS */}
+                    <Card title={`Daily Recovery Tasks - ${new Date().toLocaleDateString()}`}>
+                        <div className="mb-6">
+                            <div className="flex justify-between text-sm mb-2 font-medium">
+                                <span className="text-gray-500">Today's Progress</span>
+                                <span className="text-[var(--teal)]">{Math.round(progressPercent)}%</span>
                             </div>
-
-                            <Button
-                                className={` w-full sm:w-auto ${task.done ? "bg-green-500 text-white border-none" : ""}`}
-                                variant={task.done ? "secondary" : "primary"}
-                                disabled={task.done}
-                                onClick={() => markDone(task.id, task.title)}
-                            >
-                                {task.done ? <CheckCircle2 className="w-4 h-4 mr-1 text-sm" /> : ""}
-                                {task.done ? "Completed" : "Mark Done"}
-                            </Button>
+                            <div className="w-full bg-gray-100 rounded-full h-2.5">
+                                <div
+                                    className="bg-[var(--teal)] h-2.5 rounded-full transition-all duration-500"
+                                    style={{ width: `${progressPercent}%` }}
+                                ></div>
+                            </div>
                         </div>
-                    ))}
-                    {!tasks.length && <p className="muted text-sm p-2">No tasks available for today.</p>}
-                </div>
-            </Card>
 
-            <div className="grid md:grid-cols-2 gap-6">
-                {/* 2. SUMMARIZATION */}
-                <Card title="Visit Summarization">
-                    <div className="space-y-3">
-                        {summaryLines.map((line) => (
-                            <div key={line} className="flex gap-3 p-3 bg-[#f6fbfc] rounded-lg border border-[var(--border)] text-sm text-gray-700">
-                                <Activity className="w-4 h-4 text-[var(--teal)] shrink-0 mt-0.5" />
-                                {line}
-                            </div>
-                        ))}
-                        {!summaryLines.length && <p className="muted text-sm">No summarization lines available.</p>}
-                    </div>
-                </Card>
+                        <div className="space-y-3">
+                            {tasks.map((task) => (
+                                <div
+                                    key={task.id}
+                                    className={`flex flex-col gap-3 rounded-xl border p-4 transition-all sm:flex-row sm:items-center sm:justify-between ${
+                                        task.done ? "bg-green-50/50 border-green-200 opacity-90" : "bg-white border-[var(--border)] shadow-sm hover:border-[var(--teal)]"
+                                    }`}
+                                >
+                                    <div className="flex w-full flex-1 items-start gap-3 pl-1">
+                                        <Clock className={`w-5 h-5 shrink-0 mt-0.5 ${task.done ? "text-green-500" : "text-[var(--teal)]"}`} />
+                                        <p className={`text-sm leading-relaxed ${task.done ? "line-through text-green-700" : "text-gray-800 font-medium"}`}>
+                                            {task.title}
+                                        </p>
+                                    </div>
 
-                {/* 3. FOLLOW UP & RAW TEXT */}
-                <div className="space-y-6">
-                    <Card title="Follow Up Reminder">
-                        <div className="flex gap-3 p-4 bg-orange-50/50 rounded-lg border border-orange-100 text-sm text-orange-900">
-                            <Calendar className="w-5 h-5 text-orange-500 shrink-0" />
-                            <p>{plan?.follow_up_reminder || "No specific follow-up required."}</p>
+                                    <Button
+                                        className={`w-full sm:w-auto shrink-0 shadow-sm ${task.done ? "bg-green-500 hover:bg-green-600 text-white border-none" : ""}`}
+                                        variant={task.done ? "secondary" : "primary"}
+                                        disabled={task.done}
+                                        onClick={() => markDone(task.id, task.title)}
+                                    >
+                                        {task.done ? <CheckCircle2 className="w-4 h-4 mr-1.5" /> : ""}
+                                        {task.done ? "Completed" : "Mark Done"}
+                                    </Button>
+                                </div>
+                            ))}
+                            {!tasks.length && (
+                                <div className="text-center p-6 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                                    <p className="text-gray-500 text-sm">No tasks assigned for today. Rest up!</p>
+                                </div>
+                            )}
                         </div>
                     </Card>
 
-                    {!!rawPlanText && (
-                        <Card title="Additional Notes">
-                            <p className="whitespace-pre-wrap break-words text-sm text-gray-600 p-2 bg-gray-50 rounded-md border border-gray-100">{rawPlanText}</p>
+                    <div className="grid md:grid-cols-2 gap-6 items-start">
+                        {/* 2. SUMMARIZATION */}
+                        <Card title="Visit Summarization">
+                            <div className="space-y-3">
+                                {summaryLines.map((line, idx) => (
+                                    <div key={idx} className="flex gap-3 p-3 bg-blue-50/40 rounded-lg border border-blue-100/50 text-sm text-gray-700">
+                                        <Activity className="w-4 h-4 text-[var(--teal)] shrink-0 mt-0.5" />
+                                        <span className="leading-relaxed">{line}</span>
+                                    </div>
+                                ))}
+                                {!summaryLines.length && <p className="text-gray-500 text-sm italic">No summarization notes available.</p>}
+                            </div>
                         </Card>
-                    )}
-                </div>
-            </div>
+
+                        {/* 3. FOLLOW UP & RAW TEXT */}
+                        <div className="space-y-6">
+                            
+                            {/* NEW: COMBINED FOLLOW-UP CARD */}
+                            <Card title="Follow-Up Schedule">
+                                <div className="space-y-4">
+                                    {/* Date Section */}
+                                    <div className="flex items-start gap-3 p-4 bg-indigo-50/50 rounded-lg border border-indigo-100 text-sm text-indigo-900">
+                                        <Calendar className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
+                                        <div>
+                                            <p className="font-bold text-indigo-950 mb-0.5">Target Date</p>
+                                            <p>{formattedFollowUpDate}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Instructions Section */}
+                                    <div className="flex items-start gap-3 p-4 bg-orange-50/50 rounded-lg border border-orange-100 text-sm text-orange-900">
+                                        <FileText className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
+                                        <div>
+                                            <p className="font-bold text-orange-950 mb-0.5">Doctor's Instructions</p>
+                                            <p className="leading-relaxed">{plan?.follow_up_reminder || "No specific instructions provided."}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </Card>
+
+                            {!!rawPlanText && (
+                                <Card title="Additional Clinical Notes">
+                                    <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-700 p-4 bg-gray-50/80 rounded-lg border border-gray-200">
+                                        {rawPlanText}
+                                    </p>
+                                </Card>
+                            )}
+                        </div>
+                    </div>
                 </>
             )}
         </div>

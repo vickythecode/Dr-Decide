@@ -104,6 +104,7 @@ async def get_care_plan(
             "patient_id": latest_plan.get("patient_id"),
             "simplified_plan": latest_plan.get("simplified_plan"), 
             "follow_up_reminder": latest_plan.get("follow_up_reminder"),
+            "follow_up_date": latest_plan.get("follow_up_date"),
             "status": latest_plan.get("status")
         }
     except Exception as e:
@@ -344,6 +345,7 @@ async def get_care_plan_by_appointment_id(appointment_id: str):
             appointment_id=item.get("appointment_id"),
             simplified_plan=item.get("simplified_plan", "{}"),
             follow_up_reminder=item.get("follow_up_reminder") or item.get("follow_up_details") or "None",
+            follow_up_date=item.get("follow_up_date") or "None",
             status=item.get("status", "Completed")
         )
 

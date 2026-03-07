@@ -211,16 +211,27 @@ from typing import Optional
 # Import your service function here if it's in a different file
 # from services import generate_and_save_care_plan 
 
+
+import json
+from datetime import date, datetime
+import uuid
+import os
+from fastapi import APIRouter, Depends, HTTPException, Form, File, UploadFile
+from typing import Optional
+# Make sure to import types from the new genai SDK
+from google.genai import types, Client 
+
 @router.post("/consultation", response_model=CarePlanResponse)
 async def submit_consultation(
     patient_id: str = Form(...),
     appointment_id: str = Form(...),
     current_examination: str = Form(...),
     medicines_prescribed: str = Form(...),
-    follow_up_details: str = Form(...),
+    follow_up_date: str = Form(...), # EXPECTING YYYY-MM-DD for the math to work!
+    follow_up_details: str = Form(...), 
     phone_number: Optional[str] = Form(""),
-    medical_history_text: Optional[str] = Form(""), # Manual text entry
-    file: Optional[UploadFile] = File(None),        # The uploaded PDF or Image
+    medical_history_text: Optional[str] = Form(""),
+    file: Optional[UploadFile] = File(None),
     current_user: dict = Depends(require_role("Doctor")) 
 ):
     """
@@ -250,15 +261,12 @@ async def submit_consultation(
     Prescribed Medicines: {medicines_prescribed}
     """
 
-   # 2. Build the Multi-Modal Payload for Gemini
+    # 2. Build the Multi-Modal Payload for Gemini
     gemini_contents = [prompt]
     
-    # If the doctor uploaded a file, attach it using the official types.Part object!
     if file:
         file_bytes = await file.read()
         print(f"File attached: {file.filename} ({file.content_type})")
-        
-        # 🔥 THE FIX IS HERE 🔥
         gemini_contents.append(
             types.Part.from_bytes(
                 data=file_bytes,
@@ -269,21 +277,26 @@ async def submit_consultation(
     # 3. Call Google Gemini
     try:
         print("Sending clinical notes & files to Google Gemini...")
-        client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+        client = Client(api_key=os.getenv("GEMINI_API_KEY"))
 
         response = client.models.generate_content(
             model="gemini-2.5-flash",
-            contents=gemini_contents, # Pass the combined list (text + file)
-            config=GenerateContentConfig(
-                response_mime_type="application/json"
-            )
+            contents=gemini_contents,
+            # Force JSON output schema if you want to be extra safe, but this works well:
+            config={"response_mime_type": "application/json"} 
         )
 
         ai_simplified_plan = response.text
+        
+        # NEW: Parse the JSON string to count the exact number of daily tasks!
+        parsed_plan = json.loads(ai_simplified_plan)
+        daily_task_count = len(parsed_plan.get("care_plan", {}).keys()) # Usually 4
+        
         print("✅ Gemini Care Plan Generated Successfully!")
 
     except Exception as e:
         print(f"Gemini Error: {e}")
+        daily_task_count = 4 # Fallback
         ai_simplified_plan = json.dumps({
             "care_plan": {
                 "Morning": "Take prescribed medication after breakfast.",
@@ -299,8 +312,6 @@ async def submit_consultation(
         })
 
     # 4. Save the final Care Plan record to DynamoDB
-    # Note: We do NOT save the raw PDF bytes to DynamoDB (it will crash the DB limit).
-    # We just save the text, and a note if a file was attached.
     record = {
         'patient_id': patient_id,
         'appointment_id': appointment_id, 
@@ -311,8 +322,14 @@ async def submit_consultation(
         'raw_examination': current_examination,
         'medicines_prescribed': medicines_prescribed,
         'simplified_plan': ai_simplified_plan,
+        
+        # NEW: The 3 fields required for the Adherence Tracking Math!
+        'created_at': date.today().isoformat(),
+        'follow_up_date': follow_up_date, # Expected format: "2026-03-21"
+        'daily_task_count': daily_task_count,
+        
         'follow_up_reminder': follow_up_details,
-        'status': 'Completed'
+        'status': 'Active' # Set to active so it shows up on the dashboard
     }
 
     try:
@@ -326,7 +343,7 @@ async def submit_consultation(
         notifications_table.put_item(Item={
             'notification_id': notification_id,
             'patient_id': patient_id,
-            'message': f"Care plan updated by {doctor_email}: New daily tasks added.",
+            'message': f"Care plan updated by Dr. {doctor_email.split('@')[0]}. New daily tasks added.",
             'timestamp': datetime.utcnow().isoformat(),
             'status': 'Unread'
         })
@@ -352,8 +369,12 @@ async def submit_consultation(
         appointment_id=appointment_id,
         simplified_plan=ai_simplified_plan,
         follow_up_reminder=follow_up_details,
-        status="Success - Saved to DB, AI Generated, & SMS Sent!"
+        status="Success - Saved to DB, AI Generated, & SMS Sent!",
+        created_at=date.today().isoformat(),
+        follow_up_date=follow_up_date, 
+        daily_task_count=daily_task_count
     )
+
 
 @router.get("/dashboard-stats")
 async def get_dashboard_stats(
