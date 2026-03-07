@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from app.services.auth import require_role
 from pydantic import BaseModel
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta,timezone
 import uuid
 import os
 import boto3
@@ -49,10 +49,13 @@ async def log_task_completion(request: TaskLogRequest):
         print(f"Error logging task: {e}")
         raise HTTPException(status_code=500, detail="Failed to log task completion.")
 
+
+
+
 @router.get("/stats/{appointment_id}")
 async def get_patient_recovery_status(appointment_id: str):
     try:
-        # 1. Fetch all logs for this appointment
+        # 1. Fetch all completed task logs
         response = adherence_logs_table.query(
             IndexName='appointment_id-index',
             KeyConditionExpression=Key('appointment_id').eq(appointment_id)
@@ -60,40 +63,104 @@ async def get_patient_recovery_status(appointment_id: str):
         logs = response.get('Items', [])
         logs.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
         
-        # 2. Extract Patient ID (The Fix is here)
+        # 2. FIND THE PATIENT ID FIRST (From logs or appointments table)
         patient_id = "Unknown"
         if logs:
             patient_id = logs[0].get('patient_id')
-        else:
-            # FIX: If no logs exist, find the patient_id from the original appointment
-            # Replace 'appointments_table' with your actual Appointments table variable name
+        
+        if not patient_id or patient_id == "Unknown":
             appt_response = appointments_table.get_item(Key={'appointment_id': appointment_id})
             appt_item = appt_response.get('Item')
             if appt_item:
                 patient_id = appt_item.get('patient_id', 'Unknown')
+                
+        if patient_id == "Unknown":
+            raise HTTPException(status_code=404, detail="Could not find patient associated with this appointment.")
 
-        # 3. Fetch Patient Name
+        # 3. FETCH THE CARE PLAN (Using the correct partition key!)
+        try:
+            # We use query instead of get_item just in case you also have a Sort Key
+            plan_response = care_plans_table.query(
+                KeyConditionExpression=Key('patient_id').eq(patient_id)
+            )
+            # Find the specific plan for this appointment, or default to the most recent one
+            all_plans = plan_response.get('Items', [])
+            plan_item = next((p for p in all_plans if p.get('appointment_id') == appointment_id), None)
+            print(f"DEBUG: Found {len(all_plans)} plans for patient_id {patient_id}, selected plan: {plan_item}")
+            if not plan_item and all_plans:
+                plan_item = all_plans[0] # Fallback if appointment_id wasn't saved perfectly
+                
+        except Exception as e:
+            print(f"AWS Error fetching Care Plan: {e}")
+            raise HTTPException(status_code=500, detail="Care Plan table schema mismatch.")
+
+        if not plan_item:
+            raise HTTPException(status_code=404, detail="Care plan not found.")
+
+        # 4. FETCH PATIENT NAME
         patient_name = "Unknown Patient"
-        if patient_id != "Unknown":
+        try:
             p_item = patient_table.get_item(
                 Key={'patient_id': patient_id},
-                ProjectionExpression='full_name'
+                ProjectionExpression='full_name' # Your actual column name
             ).get('Item', {})
             patient_name = p_item.get('full_name', 'Unknown Patient')
+        except Exception as e:
+            print(f"Error fetching patient name: {e}")
 
-        # 4. Calculate Stats (Same as before)
+        # ==========================================
+        # 5. CALCULATE STATS (EXPECTED TASK LOGIC)
+        # ==========================================
+        IST = timezone(timedelta(hours=5, minutes=30))
+        today = datetime.now(IST).date()
         total_completed = len(logs)
-        expected_tasks = 20 
-        adherence_percentage = min(int((total_completed / expected_tasks) * 100), 100) if expected_tasks > 0 else 0
         
-        if adherence_percentage >= 75:
-            status_text = "On Track"
-        elif adherence_percentage >= 50:
-            status_text = "Needs Attention"
+        # Extract dates safely
+        created_str = str(plan_item.get('created_date') or plan_item.get('created_at', today.isoformat()))[:10]
+        
+        follow_up_str = str(plan_item.get('follow_up_date', today.isoformat()))[:10]
+        
+        
+        # Safely extract tasks_per_day
+        try:
+            tasks_per_day = int(plan_item.get('daily_task_count', 4))
+        except (TypeError, ValueError):
+            tasks_per_day = 4
+        
+        consultation_date = datetime.strptime(created_str, "%Y-%m-%d").date()
+        follow_up_date = datetime.strptime(follow_up_str, "%Y-%m-%d").date()
+        
+        # Tracking starts the day AFTER the consultation
+        start_date = consultation_date + timedelta(days=1)
+        # Stop expecting new tasks if the follow-up date has passed
+        calc_end_date = min(today, follow_up_date)
+        
+        if today < start_date:
+            # Day 0: Plan was made today. No penalties yet.
+            days_elapsed = 0
+            expected_tasks = 0
+            adherence_percentage = 0 
+            status_text = "Starts Tomorrow"
         else:
-            status_text = "Critical"
+            # Calculate exactly how many tasks they SHOULD have done by today
+            days_elapsed = (calc_end_date - start_date).days + 1
+            expected_tasks = days_elapsed * tasks_per_day
+            
+            # The actual percentage math
+            if expected_tasks > 0:
+                adherence_percentage = min(int((total_completed / expected_tasks) * 100), 100)
+            else:
+                adherence_percentage = 0
+                
+            if adherence_percentage >= 75:
+                status_text = "On Track"
+            elif adherence_percentage >= 50:
+                status_text = "Needs Attention"
+            else:
+                status_text = "Critical"
 
-        today_str = date.today().isoformat()
+        # 6. FORMAT OUTPUTS FOR NEXT.JS
+        today_str = today.isoformat()
         todays_logs = [log['task_id'] for log in logs if log.get('date_logged') == today_str]
         last_active = logs[0].get('timestamp') if logs else None
         
@@ -111,90 +178,17 @@ async def get_patient_recovery_status(appointment_id: str):
             "patient_id": patient_id,
             "patient_name": patient_name,
             "total_completed": total_completed,
+            "expected_tasks": expected_tasks, 
             "adherence_percentage": adherence_percentage,
             "status": status_text,
             "last_active": last_active,
             "recent_logs": recent_logs_formatted,
-            "todays_completed_tasks": todays_logs 
+            "todays_completed_tasks": todays_logs,
+            "simplified_plan": plan_item.get('simplified_plan', '{}') # Ensure the doctor can see the checklist!
         }
     except Exception as e:
         print(f"Error fetching stats for {appointment_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-    """Doctor views the patient's adherence score and recent activity."""
-    try:
-        # 1. Fetch all logs for this appointment
-        response = adherence_logs_table.query(
-            IndexName='appointment_id-index',
-            KeyConditionExpression=Key('appointment_id').eq(appointment_id)
-        )
-        logs = response.get('Items', [])
-        
-        # 2. Sort logs by timestamp descending (newest first)
-        logs.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
-        
-        # 3. Get today's completed tasks
-        today_str = date.today().isoformat()
-        todays_logs = [log['task_id'] for log in logs if log.get('date_logged') == today_str]
-        
-        # 4. Calculate Overall Adherence
-        total_completed = len(logs)
-        expected_tasks = 20 
-        adherence_percentage = min(int((total_completed / expected_tasks) * 100), 100) if expected_tasks > 0 else 0
-        
-        if adherence_percentage >= 75:
-            status_text = "On Track"
-        elif adherence_percentage >= 50:
-            status_text = "Needs Attention"
-        else:
-            status_text = "Critical"
-
-        # 5. Extract IDs and FETCH PATIENT NAME
-        patient_id = "Unknown"
-        patient_name = "Unknown Patient"
-
-        if logs:
-            patient_id = logs[0].get('patient_id', 'Unknown')
-        else:
-            # OPTIONAL: If no logs exist, you might want to query your 
-            # Appointments table here to get the patient_id associated with this appt.
-            pass
-
-        # Fetch the name from the patient_table
-        if patient_id != "Unknown":
-            p_item = patient_table.get_item(
-                Key={'patient_id': patient_id},
-                ProjectionExpression='patient_name'
-            ).get('Item', {})
-            patient_name = p_item.get('patient_name', 'Unknown Patient')
-
-        last_active = logs[0].get('timestamp') if logs else None
-        
-        recent_logs_formatted = [
-            {
-                "id": log.get("log_id"),
-                "task_title": log.get("task_title", "Unknown Task"),
-                "logged_at": log.get("timestamp")
-            }
-            for log in logs[:10]
-        ]
-
-        return {
-            "appointment_id": appointment_id,
-            "patient_id": patient_id,
-            "patient_name": patient_name, # <-- Successfully Synced
-            "total_completed": total_completed,
-            "adherence_percentage": adherence_percentage,
-            "status": status_text,
-            "last_active": last_active,
-            "recent_logs": recent_logs_formatted,
-            "todays_completed_tasks": todays_logs 
-        }
-    except Exception as e:
-        print(f"Error fetching stats for {appointment_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-
 
     
 @router.get("/all-stats") 

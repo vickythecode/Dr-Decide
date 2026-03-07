@@ -5,11 +5,11 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { 
   Activity, AlertCircle, CheckCircle2, Clock, 
-  TrendingUp, CalendarDays, User, ArrowLeft, CheckCircle
+  TrendingUp, CalendarDays, User, ArrowLeft, CheckCircle, RefreshCw
 } from "lucide-react";
 import Card from "@/components/ui/Card";
 import { api } from "@/lib/api";
-import { parseCarePlanText } from "@/lib/care-plan"; // <-- Imported parser
+import { parseCarePlanText } from "@/lib/care-plan"; 
 
 type AdherenceLog = {
   id: string;
@@ -23,11 +23,12 @@ type AdherenceStats = {
   patient_name: string; 
   adherence_percentage: number;
   total_completed: number;
+  expected_tasks: number; // <-- NEW: Added this from our backend updates!
   last_active: string | null;
   status: "On Track" | "Needs Attention" | "Critical";
   recent_logs: AdherenceLog[];
-  todays_completed_tasks: string[]; // <-- Added
-  simplified_plan: string;          // <-- Added
+  todays_completed_tasks: string[]; 
+  simplified_plan: string;          
 };
 
 export default function DoctorPatientDetailView() {
@@ -35,13 +36,16 @@ export default function DoctorPatientDetailView() {
   const appointmentId = params?.id as string;
   
   const [loading, setLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false); 
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<AdherenceStats | null>(null);
 
-  const loadStats = useCallback(async () => {
+  const loadStats = useCallback(async (isBackground = false) => {
     if (!appointmentId) return;
     
-    setLoading(true);
+    if (!isBackground) setLoading(true);
+    else setIsSyncing(true);
+    
     setError(null);
 
     try {
@@ -57,6 +61,7 @@ export default function DoctorPatientDetailView() {
         patient_name: data.patient_name || "Unknown Patient", 
         adherence_percentage: data.adherence_percentage || 0,
         total_completed: data.total_completed || 0,
+        expected_tasks: data.expected_tasks || 0, // <-- NEW: Mapped the expected tasks
         last_active: data.last_active || null,
         status: data.status || "Needs Attention",
         recent_logs: data.recent_logs || [], 
@@ -66,14 +71,21 @@ export default function DoctorPatientDetailView() {
 
     } catch (err) {
       console.error("Failed to load patient adherence stats", err);
-      setError("Unable to load patient details. Please check your connection.");
+      if (!isBackground) setError("Unable to load patient details. Please check your connection.");
     } finally {
-      setLoading(false);
+      if (!isBackground) setLoading(false);
+      else setIsSyncing(false);
     }
   }, [appointmentId]);
 
   useEffect(() => {
-    loadStats();
+    loadStats(); 
+
+    const interval = setInterval(() => {
+      loadStats(true); 
+    }, 15000); 
+
+    return () => clearInterval(interval); 
   }, [loadStats]);
 
   if (loading) {
@@ -105,7 +117,6 @@ export default function DoctorPatientDetailView() {
   const statusColor = isGood ? "text-green-700 bg-green-50 border-green-200" : isCritical ? "text-red-700 bg-red-50 border-red-200" : "text-orange-700 bg-orange-50 border-orange-200";
   const ringColor = isGood ? "text-green-500" : isCritical ? "text-red-500" : "text-orange-500";
 
-  // --- PARSE THE TASKS FOR TODAY ---
   const parsed = parseCarePlanText(stats.simplified_plan);
   const todaysTasks = parsed.planLines
     .map((item, index) => {
@@ -118,12 +129,27 @@ export default function DoctorPatientDetailView() {
     })
     .filter((task) => task.title);
 
+  // Helper to format today's date nicely for the UI
+  const todayFormatted = new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+
   return (
     <div className="mx-auto max-w-5xl space-y-6 pb-12">
       
-      <Link href="/doctor/adherence" className="inline-flex items-center text-sm font-bold text-gray-500 hover:text-[var(--teal)] transition-colors">
-        <ArrowLeft className="mr-2 h-4 w-4" /> Back to Patient List
-      </Link>
+      {/* HEADER CONTROLS */}
+      <div className="flex items-center justify-between">
+        <Link href="/doctor/adherence" className="inline-flex items-center text-sm font-bold text-gray-500 hover:text-[var(--teal)] transition-colors">
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Patient List
+        </Link>
+        
+        <button 
+          onClick={() => loadStats(true)}
+          disabled={isSyncing}
+          className="inline-flex items-center text-xs font-bold text-gray-500 hover:text-[var(--teal)] transition-colors bg-white px-3 py-1.5 rounded-md border border-gray-200 shadow-sm disabled:opacity-50"
+        >
+          <RefreshCw className={`mr-2 h-3 w-3 ${isSyncing ? "animate-spin text-[var(--teal)]" : ""}`} /> 
+          {isSyncing ? "Syncing..." : "Sync Now"}
+        </button>
+      </div>
 
       {/* HEADER SECTION */}
       <div className="flex flex-col items-start justify-between gap-4 border-b border-gray-100 pb-6 md:flex-row md:items-center bg-white p-6 rounded-xl shadow-sm border border-gray-200">
@@ -168,6 +194,7 @@ export default function DoctorPatientDetailView() {
           </div>
         </Card>
 
+        {/* UPDATED: Now shows actual progression out of the expected tasks */}
         <Card className="flex flex-col justify-center p-6">
           <div className="flex items-center gap-3 text-[var(--teal)] mb-3">
             <div className="bg-teal-50 p-2 rounded-lg">
@@ -175,8 +202,10 @@ export default function DoctorPatientDetailView() {
             </div>
             <h3 className="font-bold text-gray-700">Tasks Logged</h3>
           </div>
-          <p className="text-4xl font-black text-gray-900">{stats.total_completed}</p>
-          <p className="mt-2 text-sm text-gray-500">Total recovery steps completed by the patient since the plan was generated.</p>
+          <p className="text-4xl font-black text-gray-900">
+            {stats.total_completed} <span className="text-lg text-gray-400 font-medium">/ {stats.expected_tasks}</span>
+          </p>
+          <p className="mt-2 text-sm text-gray-500">Total recovery steps completed out of the tasks expected so far.</p>
         </Card>
 
         <Card className="flex flex-col justify-center p-6">
@@ -194,14 +223,14 @@ export default function DoctorPatientDetailView() {
       </div>
 
       <div className="grid md:grid-cols-2 gap-6 items-start">
-        {/* TODAY'S TASKS CARD (NEW) */}
-        <Card title="Today's Task Status">
+        {/* UPDATED: Added today's date to the card title so it's perfectly clear */}
+        <Card title={`Task Status for Today (${todayFormatted})`}>
           <div className="space-y-3">
             {todaysTasks.length > 0 ? (
               todaysTasks.map((task) => (
                 <div 
                   key={task.id} 
-                  className={`flex items-start gap-3 p-3 rounded-lg border ${
+                  className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${
                     task.done ? "bg-green-50/50 border-green-200" : "bg-gray-50 border-gray-200"
                   }`}
                 >
