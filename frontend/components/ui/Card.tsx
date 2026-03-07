@@ -7,7 +7,7 @@ export default function Card({
   title?: string;
   children: React.ReactNode;
   action?: React.ReactNode;
-  className?: string; // 2. Add it to the TypeScript interface
+  className?: string;
 }) {
   return (
     // 3. Merge the custom className with your default "panel p-4" classes

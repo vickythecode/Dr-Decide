@@ -25,19 +25,6 @@ export default function PatientAccountSettingsPage() {
   });
   const [passwordLoading, setPasswordLoading] = useState(false);
 
-  // --- Profile Handlers ---
-  function saveProfile() {
-    setProfileLoading(true);
-    setTimeout(() => {
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem("patient_settings_email", email);
-        window.localStorage.setItem("patient_settings_phone", phone);
-        window.localStorage.setItem("patient_settings_language", language);
-      }
-      setProfileLoading(false);
-      pushToast("Profile settings saved", "success");
-    }, 500);
-  }
 
   // --- Password Handlers ---
   async function handleChangePassword(e: React.FormEvent) {
@@ -89,11 +76,7 @@ export default function PatientAccountSettingsPage() {
       
    
       {/* --- SECURITY / PASSWORD SECTION --- */}
-      <Card title={
-        <span className="flex items-center gap-2 text-gray-900">
-          <Lock className="h-5 w-5 text-[var(--teal)]" /> Security & Password
-        </span>
-      }>
+      <Card title="Security & Password">
         <form onSubmit={handleChangePassword} className="space-y-4">
           <div>
             <p className="mb-1 text-sm font-semibold text-gray-700">Current Password</p>

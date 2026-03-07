@@ -5,27 +5,29 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { 
   Activity, AlertCircle, CheckCircle2, Clock, 
-  TrendingUp, CalendarDays, User, ArrowLeft 
+  TrendingUp, CalendarDays, User, ArrowLeft, CheckCircle
 } from "lucide-react";
 import Card from "@/components/ui/Card";
 import { api } from "@/lib/api";
+import { parseCarePlanText } from "@/lib/care-plan"; // <-- Imported parser
 
-// Define the shape of the data we expect from the backend
 type AdherenceLog = {
   id: string;
   task_title: string;
-  logged_at: string; // ISO date string
+  logged_at: string; 
 };
 
 type AdherenceStats = {
   appointment_id: string;
   patient_id: string;
-  patient_name: string; // NEW: Added field
+  patient_name: string; 
   adherence_percentage: number;
   total_completed: number;
   last_active: string | null;
   status: "On Track" | "Needs Attention" | "Critical";
   recent_logs: AdherenceLog[];
+  todays_completed_tasks: string[]; // <-- Added
+  simplified_plan: string;          // <-- Added
 };
 
 export default function DoctorPatientDetailView() {
@@ -52,12 +54,14 @@ export default function DoctorPatientDetailView() {
       setStats({
         appointment_id: data.appointment_id || appointmentId,
         patient_id: data.patient_id || "Unknown",
-        patient_name: data.patient_name || "Unknown Patient", // NEW: Mapping name
+        patient_name: data.patient_name || "Unknown Patient", 
         adherence_percentage: data.adherence_percentage || 0,
         total_completed: data.total_completed || 0,
         last_active: data.last_active || null,
         status: data.status || "Needs Attention",
         recent_logs: data.recent_logs || [], 
+        todays_completed_tasks: data.todays_completed_tasks || [],
+        simplified_plan: data.simplified_plan || "",
       });
 
     } catch (err) {
@@ -101,6 +105,19 @@ export default function DoctorPatientDetailView() {
   const statusColor = isGood ? "text-green-700 bg-green-50 border-green-200" : isCritical ? "text-red-700 bg-red-50 border-red-200" : "text-orange-700 bg-orange-50 border-orange-200";
   const ringColor = isGood ? "text-green-500" : isCritical ? "text-red-500" : "text-orange-500";
 
+  // --- PARSE THE TASKS FOR TODAY ---
+  const parsed = parseCarePlanText(stats.simplified_plan);
+  const todaysTasks = parsed.planLines
+    .map((item, index) => {
+      const id = `task_${stats.appointment_id}_${index}`;
+      return {
+        id,
+        title: item,
+        done: stats.todays_completed_tasks.includes(id)
+      };
+    })
+    .filter((task) => task.title);
+
   return (
     <div className="mx-auto max-w-5xl space-y-6 pb-12">
       
@@ -108,9 +125,9 @@ export default function DoctorPatientDetailView() {
         <ArrowLeft className="mr-2 h-4 w-4" /> Back to Patient List
       </Link>
 
+      {/* HEADER SECTION */}
       <div className="flex flex-col items-start justify-between gap-4 border-b border-gray-100 pb-6 md:flex-row md:items-center bg-white p-6 rounded-xl shadow-sm border border-gray-200">
         <div>
-          {/* UPDATED: Showing Patient Name as the main title */}
           <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
             {stats.patient_name}
           </h1>
@@ -128,6 +145,7 @@ export default function DoctorPatientDetailView() {
         </div>
       </div>
 
+      {/* STATS ROW */}
       <div className="grid gap-6 md:grid-cols-3">
         <Card className="flex flex-col items-center justify-center py-8 text-center">
           <h3 className="mb-4 text-sm font-bold text-gray-500 uppercase tracking-wider">Overall Compliance</h3>
@@ -175,35 +193,69 @@ export default function DoctorPatientDetailView() {
         </Card>
       </div>
 
-      <Card title="Recent Patient Activity" className="min-h-[300px]">
-        {stats.recent_logs && stats.recent_logs.length > 0 ? (
-          <div className="relative border-l-2 border-gray-100 ml-4 space-y-8 py-4">
-            {stats.recent_logs.map((log, idx) => (
-              <div key={log.id || idx} className="relative pl-6">
-                <div className="absolute -left-[9px] top-1.5 h-4 w-4 rounded-full border-2 border-white bg-[var(--teal)] shadow-sm"></div>
-                
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                  <div className="bg-gray-50/50 p-3 rounded-lg border border-gray-100 flex-1">
-                    <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-green-500" /> Marked Task Complete
-                    </p>
-                    <p className="text-sm text-gray-600 mt-1 pl-6">"{log.task_title}"</p>
-                  </div>
-                  <span className="shrink-0 text-xs font-bold text-gray-500 bg-white border border-gray-200 px-2.5 py-1.5 rounded-md shadow-sm">
-                    {new Date(log.logged_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+      <div className="grid md:grid-cols-2 gap-6 items-start">
+        {/* TODAY'S TASKS CARD (NEW) */}
+        <Card title="Today's Task Status">
+          <div className="space-y-3">
+            {todaysTasks.length > 0 ? (
+              todaysTasks.map((task) => (
+                <div 
+                  key={task.id} 
+                  className={`flex items-start gap-3 p-3 rounded-lg border ${
+                    task.done ? "bg-green-50/50 border-green-200" : "bg-gray-50 border-gray-200"
+                  }`}
+                >
+                  {task.done ? (
+                    <CheckCircle className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
+                  ) : (
+                    <Clock className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
+                  )}
+                  <p className={`text-sm ${task.done ? "text-green-800 line-through opacity-80" : "text-gray-700"}`}>
+                    {task.title}
+                  </p>
+                  <span className="ml-auto text-xs font-bold uppercase tracking-wider">
+                    {task.done ? <span className="text-green-600">Done</span> : <span className="text-gray-400">Pending</span>}
                   </span>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-sm text-gray-500 italic p-2">No tasks available in the care plan.</p>
+            )}
           </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center p-12 text-center text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-            <TrendingUp className="mb-3 h-10 w-10 text-gray-300" />
-            <p className="text-sm font-medium text-gray-700">No activity logged yet.</p>
-            <p className="text-xs text-gray-500 mt-1">The patient has not checked off any tasks for this care plan.</p>
-          </div>
-        )}
-      </Card>
+        </Card>
+
+        {/* TIMELINE CARD */}
+        <Card title="Recent Timeline" className="min-h-[300px]">
+          {stats.recent_logs && stats.recent_logs.length > 0 ? (
+            <div className="relative border-l-2 border-gray-100 ml-4 space-y-8 py-4">
+              {stats.recent_logs.map((log, idx) => (
+                <div key={log.id || idx} className="relative pl-6">
+                  <div className="absolute -left-[9px] top-1.5 h-4 w-4 rounded-full border-2 border-white bg-[var(--teal)] shadow-sm"></div>
+                  
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                    <div className="bg-gray-50/50 p-3 rounded-lg border border-gray-100 flex-1">
+                      <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-green-500" /> Marked Task Complete
+                      </p>
+                      <p className="text-sm text-gray-600 mt-1 pl-6">"{log.task_title}"</p>
+                    </div>
+                    <span className="shrink-0 text-xs font-bold text-gray-500 bg-white border border-gray-200 px-2.5 py-1.5 rounded-md shadow-sm">
+                      {new Date(log.logged_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center p-12 text-center text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+              <TrendingUp className="mb-3 h-10 w-10 text-gray-300" />
+              <p className="text-sm font-medium text-gray-700">No activity logged yet.</p>
+              <p className="text-xs text-gray-500 mt-1">The patient has not checked off any tasks for this care plan.</p>
+            </div>
+          )}
+        </Card>
+      </div>
+
     </div>
   );
 }
