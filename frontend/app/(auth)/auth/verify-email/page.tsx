@@ -22,7 +22,7 @@ function VerifyEmailForm() {
   const [timer, setTimer] = useState(0);
 
   useEffect(() => {
-    let interval;
+    let interval: string | number | NodeJS.Timeout | undefined;
     if (timer > 0) {
       interval = setInterval(() => setTimer((prev) => prev - 1), 1000);
     }
