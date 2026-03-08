@@ -320,35 +320,52 @@ async def get_patient_profile(
     except Exception as e:
         print(f"Profile Fetch Error: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch patient profile.")
-    
-
+     
 @router.get("/care-plan/{appointment_id}", response_model=CarePlanResponse)
 async def get_care_plan_by_appointment_id(appointment_id: str):
+    """
+    Retrieve a care plan from DynamoDB using the appointment_id GSI.
+    """
     try:
-        # Use scan with a filter instead of get_item
-        # This works even if appointment_id is NOT the Partition Key
-        response = care_plans_table.scan(
-            FilterExpression=Attr('appointment_id').eq(appointment_id)
+        # 1. Query using the Global Secondary Index (GSI)
+        # It's better to use Key('appointment_id').eq(...) for performance
+        response = care_plans_table.query(
+            IndexName='appointment_id-index', 
+            KeyConditionExpression=Key('appointment_id').eq(appointment_id)
         )
-        
+
         items = response.get('Items', [])
         
         if not items:
-            raise HTTPException(status_code=404, detail="Care plan not found")
+            raise HTTPException(
+                status_code=404, 
+                detail=f"No care plan found for Appointment ID: {appointment_id}"
+            )
 
-        # Take the first matching record
-        item = items[0]
+        # 2. Extract the first matching record
+        record = items[0]
 
+        # 3. Explicitly map fields to handle Decimal conversion and missing keys
+        # This prevents the "Validation Error" if DynamoDB has a missing column
         return CarePlanResponse(
-            patient_id=item.get("patient_id"),
-            doctor_id=item.get("doctor_id"),
-            appointment_id=item.get("appointment_id"),
-            simplified_plan=item.get("simplified_plan", "{}"),
-            follow_up_reminder=item.get("follow_up_reminder") or item.get("follow_up_details") or "None",
-            follow_up_date=item.get("follow_up_date") or "None",
-            status=item.get("status", "Completed")
+            doctor_id=str(record.get('doctor_id', '')),
+            patient_id=str(record.get('patient_id', '')),
+            appointment_id=str(record.get('appointment_id', '')),
+            simplified_plan=record.get('simplified_plan', '{}'),
+            follow_up_reminder=record.get('follow_up_reminder', record.get('follow_up_details', 'N/A')),
+            status=record.get('status', 'Active'),
+            created_at=record.get('created_at', ''),
+            follow_up_date=record.get('follow_up_date', ''),
+            daily_task_count=int(record.get('daily_task_count', 4))  # Cast Decimal to int
         )
 
+    except HTTPException as http_exc:
+        # Re-raise 404s so they aren't caught by the generic Exception block
+        raise http_exc
     except Exception as e:
-        print(f"Scan Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Database search failed: {str(e)}")
+        print(f"❌ Database Search Failed: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Internal Server Error: {str(e)}"
+        )
+    
