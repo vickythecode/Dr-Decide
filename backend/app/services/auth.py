@@ -53,46 +53,7 @@ def login_user(email, password):
     except ClientError as e:
         return {"error": e.response['Error']['Message']}
 
-def change_cognito_password(access_token: str, old_password: str, new_password: str) -> None:
-    """
-    Communicates with AWS Cognito to change the user's password using their active Access Token.
-    Raises FastAPI HTTPExceptions if Cognito rejects the request.
-    """
-    try:
-        cognito_client.change_password(
-            PreviousPassword=old_password,
-            ProposedPassword=new_password,
-            AccessToken=access_token
-        )
-        
-    except cognito_client.exceptions.NotAuthorizedException:
-        raise HTTPException(status_code=400, detail="Incorrect current password or expired session.")
-        
-    except cognito_client.exceptions.InvalidPasswordException:
-        raise HTTPException(status_code=400, detail="New password does not meet security requirements.")
-        
-    except cognito_client.exceptions.LimitExceededException:
-        raise HTTPException(status_code=429, detail="Too many attempts. Please try again later.")
-        
-    except Exception as e:
-        print(f"Cognito Change Password Error: {e}")
-        raise HTTPException(status_code=500, detail="An error occurred while changing your password.")
-# --- PART 2: TOKEN VERIFICATION & RBAC ---
 
-keys = []
-if not USER_POOL_ID or not APP_CLIENT_ID:
-    print("CRITICAL WARNING: COGNITO_USER_POOL_ID or COGNITO_APP_CLIENT_ID is missing from your .env file!")
-else:
-    # Build the URL where Cognito stores your public keys
-    KEYS_URL = f"https://cognito-idp.{REGION}.amazonaws.com/{USER_POOL_ID}/.well-known/jwks.json"
-    
-    try:
-        # Fetch the keys once when the server starts
-        with urllib.request.urlopen(KEYS_URL) as response:
-            keys = json.loads(response.read().decode('utf-8'))['keys']
-        print("SUCCESS: Cognito security keys loaded properly.")
-    except Exception as e:
-        print(f"CRITICAL ERROR FETCHING COGNITO KEYS: {e}")
 
 security_scheme = HTTPBearer()
 

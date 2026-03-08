@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Depends, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel 
 from app.models import UserLogin, UserSignUp, UserConfirm, AppointmentStatus, ChangePasswordRequest
-from app.services.auth import  sign_up_user, login_user, confirm_sign_up, change_cognito_password, update_password_via_admin, verify_cognito_token
+from app.services.auth import  sign_up_user, login_user, confirm_sign_up, update_password_via_admin, verify_cognito_token
 from dotenv import load_dotenv
 security_scheme = HTTPBearer()
 load_dotenv()
