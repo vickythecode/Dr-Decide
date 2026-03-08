@@ -62,7 +62,7 @@ export default function Sidebar() {
         <nav className="space-y-2">
           <NavItem href="/doctor/dashboard" label="Dashboard" icon={LayoutDashboard} />
           <NavItem href="/doctor/appointments" label="Appointments" icon={CalendarCheck} />
-          <NavItem href="/doctor/capacity" label="Capacity Settings" icon={Sliders} />
+          {/* <NavItem href="/doctor/capacity" label="Capacity Settings" icon={Sliders} /> */}
           <NavItem href="/doctor/adherence" label="Patient Adherence" icon={Activity} />
           <NavItem href="/doctor/patients" label="Patients Directory" icon={Users} />
           <NavItem href="/doctor/consultation" label="Consultation" icon={Stethoscope} />

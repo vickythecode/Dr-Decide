@@ -8,6 +8,7 @@ import { useToast } from "@/context/ToastContext";
 import { getAuthSubject, rememberDoctorName } from "@/lib/identity";
 import { doctorSetupProfile } from "@/lib/services"; // Assume you added getDoctorProfile to services.ts
 import { api } from "@/lib/api"; // importing api to fetch the profile
+import { useRouter } from "next/navigation";
 
 const SPECIALTY_OPTIONS = [
   "General Physician",
@@ -23,6 +24,7 @@ const SPECIALTY_OPTIONS = [
 
 export default function DoctorProfilePage() {
   const { pushToast } = useToast();
+  const router = useRouter();
   
   // Basic States - We start with empty strings and wait for the API
   const [doctorName, setDoctorName] = useState("");
@@ -121,6 +123,7 @@ export default function DoctorProfilePage() {
         if (subject) rememberDoctorName(subject, doctorName);
       }
       pushToast("Profile saved successfully", "success");
+      router.push("/doctor/dashboard");
     } catch {
       pushToast("Failed to setup profile", "error");
     } finally {

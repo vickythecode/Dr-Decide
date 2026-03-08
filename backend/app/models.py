@@ -82,6 +82,13 @@ class DoctorProfileSetup(BaseModel):
     city: str
     state: str
     pincode: str
+class ReceptionnistProfileSetup(BaseModel):
+    full_name: str
+    phone_number: str
+    clinic_name: str
+    city: str
+    state: str
+    pincode: str
 class PatientProfileSetup(BaseModel):
     full_name: str
     age: int

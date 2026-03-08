@@ -42,7 +42,7 @@ export default function PatientDashboardPage() {
         );
         setUnread(notifs.unread_count || 0);
       } catch {
-        pushToast("Failed to load patient dashboard", "error");
+        pushToast("Welcome to your dashboard! Get Started", "error");
       } finally {
         setLoading(false);
       }

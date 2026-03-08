@@ -8,12 +8,14 @@ import { useToast } from "@/context/ToastContext";
 import { getAuthSubject, rememberPatientName } from "@/lib/identity";
 import { api } from "@/lib/api";
 import { patientSetupProfile } from "@/lib/services";
+import { useRouter } from "next/navigation";
 
 const GENDER_OPTIONS = ["Male", "Female", "Other", "Prefer not to say"];
 
 export default function PatientProfilePage() {
   const { pushToast } = useToast();
-  
+  const router = useRouter();
+
   // Basic States
   const [fullName, setFullName] = useState(() => typeof window !== "undefined" ? window.localStorage.getItem("patient_profile_fullName") || "" : "");
   const [age, setAge] = useState(() => typeof window !== "undefined" ? window.localStorage.getItem("patient_profile_age") || "" : "");
@@ -22,12 +24,12 @@ export default function PatientProfilePage() {
   const [phoneNumber, setPhoneNumber] = useState(() => typeof window !== "undefined" ? window.localStorage.getItem("patient_profile_phoneNumber") || "" : "");
   const [emergencyContact, setEmergencyContact] = useState(() => typeof window !== "undefined" ? window.localStorage.getItem("patient_profile_emergencyContact") || "" : "");
   const [knownAllergies, setKnownAllergies] = useState(() => typeof window !== "undefined" ? window.localStorage.getItem("patient_profile_knownAllergies") || "" : "");
-  
+
   // Location States
   const [pincode, setPincode] = useState(() => typeof window !== "undefined" ? window.localStorage.getItem("patient_profile_pincode") || "" : "");
   const [city, setCity] = useState(() => typeof window !== "undefined" ? window.localStorage.getItem("patient_profile_city") || "" : "");
   const [state, setState] = useState(() => typeof window !== "undefined" ? window.localStorage.getItem("patient_profile_state") || "" : "");
-  
+
   const [loading, setLoading] = useState(false);
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
@@ -77,10 +79,10 @@ export default function PatientProfilePage() {
   // --- THE MAGIC PINCODE API CALL ---
   const handlePincodeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    
+
     // Only allow numbers, max 6 digits
     if (!/^\d*$/.test(value) || value.length > 6) return;
-    
+
     setPincode(value);
 
     // Trigger API exact match at 6 digits
@@ -161,6 +163,7 @@ export default function PatientProfilePage() {
         if (subject) rememberPatientName(subject, fullName);
       }
       pushToast("Profile setup complete", "success");
+      router.push("/patient/dashboard");
     } catch {
       pushToast("Failed to setup profile", "error");
     } finally {
@@ -184,14 +187,14 @@ export default function PatientProfilePage() {
   return (
     <Card title="Patient Profile">
       <div className="space-y-4">
-        
+
         {/* Basic Details Section */}
         <div className="space-y-3">
           <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Full Name" />
-          
+
           <div className="grid grid-cols-2 gap-3">
             <Input type="number" min={1} value={age} onChange={(e) => setAge(e.target.value)} placeholder="Age" />
-            
+
             <select value={gender} onChange={(e) => setGender(e.target.value)} className={selectClassName}>
               <option value="" disabled>Select Gender</option>
               {GENDER_OPTIONS.map(g => <option key={g} value={g}>{g}</option>)}
@@ -215,12 +218,12 @@ export default function PatientProfilePage() {
             <label className="text-sm font-semibold block">Location</label>
             <p className="text-xs text-[var(--muted)] mb-2">Enter your 6-digit Pincode to auto-fill your city and state.</p>
           </div>
-          
+
           <div className="relative">
-            <Input 
-              value={pincode} 
-              onChange={handlePincodeChange} 
-              placeholder="6-Digit Pincode" 
+            <Input
+              value={pincode}
+              onChange={handlePincodeChange}
+              placeholder="6-Digit Pincode"
               maxLength={6}
             />
             {isFetchingLocation && (
@@ -229,20 +232,20 @@ export default function PatientProfilePage() {
               </span>
             )}
           </div>
-          
+
           <div className="grid grid-cols-2 gap-3">
-            <Input 
-              value={city} 
-              onChange={(e) => setCity(e.target.value)} 
-              placeholder="City" 
+            <Input
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="City"
               disabled // Locks the input to ensure perfectly formatted backend data
               className="bg-[var(--muted)]/20 cursor-not-allowed"
             />
-            <Input 
-              value={state} 
-              onChange={(e) => setState(e.target.value)} 
-              placeholder="State" 
-              disabled 
+            <Input
+              value={state}
+              onChange={(e) => setState(e.target.value)}
+              placeholder="State"
+              disabled
               className="bg-[var(--muted)]/20 cursor-not-allowed"
             />
           </div>

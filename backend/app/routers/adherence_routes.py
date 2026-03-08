@@ -229,6 +229,138 @@ async def get_all_patients_summary(current_user: dict = Depends(require_role("Do
             if log.get('timestamp') > grouped_data[appt_id]["last_active"]:
                 grouped_data[appt_id]["last_active"] = log.get('timestamp')
 
+        # 3. Fetch Patient Names in bulk 
+        patient_name_map = {}
+        for p_id in patient_ids_to_fetch:
+            if p_id == "Unknown": continue
+            try:
+                p_item = patient_table.get_item(
+                    Key={'patient_id': p_id}, 
+                    ProjectionExpression='full_name'
+                ).get('Item', {})
+                patient_name_map[p_id] = p_item.get('full_name', 'Unknown Patient')
+            except Exception as e:
+                print(f"Error fetching name for {p_id}: {e}")
+
+        # ==========================================
+        # 4. APPLY PERFECTED MATH TO EACH PATIENT
+        # ==========================================
+        IST = timezone(timedelta(hours=5, minutes=30))
+        today = datetime.now(IST).date()
+        summaries = []
+        
+        for appt_id, data in grouped_data.items():
+            p_id = data["patient_id"]
+            total_completed = data["total_completed"]
+            
+            # Fetch the Care Plan to get the actual dates and task counts
+            plan_item = None
+            try:
+                plan_response = care_plans_table.query(
+                    KeyConditionExpression=Key('patient_id').eq(p_id)
+                )
+                all_plans = plan_response.get('Items', [])
+                plan_item = next((p for p in all_plans if p.get('appointment_id') == appt_id), None)
+                if not plan_item and all_plans:
+                    plan_item = all_plans[0]
+            except Exception as e:
+                print(f"Error fetching plan in all-stats for {appt_id}: {e}")
+
+            # Calculate Expected Tasks exactly like the detail view
+            expected_tasks = 4 # Absolute fallback
+            
+            if plan_item:
+                raw_created = plan_item.get('created_date') or plan_item.get('created_at') or today.isoformat()
+                created_str = str(raw_created)[:10]
+                
+                raw_follow_up = plan_item.get('follow_up_date')
+                if raw_follow_up:
+                    follow_up_str = str(raw_follow_up)[:10]
+                else:
+                    creation_date_obj = datetime.strptime(created_str, "%Y-%m-%d").date()
+                    follow_up_str = (creation_date_obj + timedelta(days=7)).isoformat()
+
+                try:
+                    tasks_per_day = int(plan_item.get('daily_task_count', 4))
+                except (TypeError, ValueError):
+                    tasks_per_day = 4
+
+                consultation_date = datetime.strptime(created_str, "%Y-%m-%d").date()
+                follow_up_date = datetime.strptime(follow_up_str, "%Y-%m-%d").date()
+
+                start_date = consultation_date
+                calc_end_date = min(today, follow_up_date)
+
+                days_elapsed = (calc_end_date - start_date).days + 1
+                if days_elapsed < 1:
+                    days_elapsed = 1
+
+                expected_tasks = days_elapsed * tasks_per_day
+
+            # The actual percentage math
+            if expected_tasks > 0:
+                percentage = min(int((total_completed / expected_tasks) * 100), 100)
+            else:
+                percentage = 0
+            
+            # Determine Status
+            if percentage >= 75: status = "On Track"
+            elif percentage >= 50: status = "Needs Attention"
+            else: status = "Critical"
+                
+            summaries.append({
+                "appointment_id": appt_id,
+                "patient_id": p_id,
+                "patient_name": patient_name_map.get(p_id, "Unknown Patient"),
+                "adherence_percentage": percentage,
+                "status": status,
+                "last_active": data["last_active"]
+            })
+            
+        # 5. Sort: Critical/Needs Attention (lowest percentage) first
+        summaries.sort(key=lambda x: x["adherence_percentage"])
+
+        return summaries
+
+    except Exception as e:
+        print(f"Error in all-stats: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+    try:
+        doctor_id = current_user['sub'] 
+        
+        # 1. Fetch all logs for this doctor
+        response = adherence_logs_table.query(
+            IndexName='doctor_id-index',
+            KeyConditionExpression=Key('doctor_id').eq(doctor_id)
+        )
+        all_logs = response.get('Items', [])
+        
+        if not all_logs:
+            return []
+
+        # 2. Group logs by appointment_id and collect unique patient_ids
+        grouped_data = {}
+        patient_ids_to_fetch = set()
+
+        for log in all_logs:
+            appt_id = log.get('appointment_id')
+            p_id = log.get('patient_id', 'Unknown')
+            
+            if appt_id not in grouped_data:
+                patient_ids_to_fetch.add(p_id)
+                grouped_data[appt_id] = {
+                    "appointment_id": appt_id,
+                    "patient_id": p_id,
+                    "total_completed": 0,
+                    "last_active": log.get('timestamp')
+                }
+            
+            grouped_data[appt_id]["total_completed"] += 1
+            
+            # Update last active if this log is newer
+            if log.get('timestamp') > grouped_data[appt_id]["last_active"]:
+                grouped_data[appt_id]["last_active"] = log.get('timestamp')
+
         # 3. Fetch Patient Names in bulk (or one-by-one per unique patient, not per log)
         # Optimization: Create a map of {patient_id: patient_name}
         patient_name_map = {}

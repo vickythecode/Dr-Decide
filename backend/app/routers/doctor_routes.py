@@ -1,8 +1,8 @@
 import uuid
 from boto3.dynamodb.conditions import Attr 
-from fastapi import APIRouter, Depends, HTTPException
-from google import genai 
-from google.genai import types
+from fastapi import APIRouter, Depends, HTTPException, Form, File, UploadFile
+from typing import Optional
+from google.genai import types, Client 
 from google.genai.types import GenerateContentConfig
 from app.models import ConsultationDetails, CarePlanResponse,DoctorProfileSetup,CapacityUpdateRequest
 from app.services.auth import require_role
@@ -10,6 +10,22 @@ import boto3
 import os
 import json
 from datetime import datetime
+
+from fastapi import APIRouter, Depends, File, UploadFile, Form
+from typing import Optional
+
+# Import your service function here if it's in a different file
+# from services import generate_and_save_care_plan 
+
+
+import json
+from datetime import date, datetime
+import uuid
+import os
+from fastapi import APIRouter, Depends, HTTPException, Form, File, UploadFile
+from typing import Optional
+# Make sure to import types from the new genai SDK
+from google.genai import types, Client 
 
 
 router = APIRouter(prefix="/api/doctor", tags=["Doctor"])
@@ -25,7 +41,12 @@ patients_table = dynamodb.Table('DrDecidePatients')
 
 # Initialize Bedrock (AI) and SNS (Text Messages) Clients
 bedrock_client = boto3.client('bedrock-runtime', region_name=os.getenv("AWS_DEFAULT_REGION", "us-east-1"))
-sns_client = boto3.client('sns', region_name=os.getenv("AWS_DEFAULT_REGION", "us-east-1"))
+sns_client = boto3.client(
+    "sns",
+    region_name=os.getenv("AWS_REGION", "us-east-1"),
+    aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY")
+)
 
 @router.post("/setup-profile")
 async def setup_doctor_profile(
@@ -204,22 +225,6 @@ async def get_doctor_appointments(
 #     )
 # #//////////// Gemini 
 
-
-from fastapi import APIRouter, Depends, File, UploadFile, Form
-from typing import Optional
-
-# Import your service function here if it's in a different file
-# from services import generate_and_save_care_plan 
-
-
-import json
-from datetime import date, datetime
-import uuid
-import os
-from fastapi import APIRouter, Depends, HTTPException, Form, File, UploadFile
-from typing import Optional
-# Make sure to import types from the new genai SDK
-from google.genai import types, Client 
 
 @router.post("/consultation", response_model=CarePlanResponse)
 async def submit_consultation(

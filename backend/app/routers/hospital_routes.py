@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException
-from app.models import QueueToken
+from app.services.auth import require_role
+from fastapi import APIRouter, HTTPException,Depends
+from app.models import DoctorProfileSetup, QueueToken, ReceptionnistProfileSetup
 import boto3
 import os
 import random
@@ -11,8 +12,30 @@ dynamodb = boto3.resource('dynamodb', region_name=os.getenv("AWS_DEFAULT_REGION"
 queue_table = dynamodb.Table('DrDecideQueue')
 patients_table = dynamodb.Table('DrDecidePatients')
 appointment_table = dynamodb.Table('DrDecideAppointments')
+receptionist_table = dynamodb.Table('DrDecideReceptionists')  # Assuming doctors and receptionists are in the same table for simplicity
 
 
+@router.get("/setup-profile")
+async def setup_receptionist_profile(profile_data: ReceptionnistProfileSetup, 
+    current_user: dict = Depends(require_role("Receptionist"))):
+    """
+    Endpoint for receptionists to set up their profile. This is a one-time setup that saves their details to DynamoDB.
+    """
+    try:
+        receptionist_id = current_user.get('sub') 
+        receptionist_data = {
+            "receptionist_id": receptionist_id,
+            "full_name": profile_data.full_name,
+            "phone_number": profile_data.phone_number,
+            "clinic_name": profile_data.clinic_name,
+            "city": profile_data.city,
+            "state": profile_data.state,
+            "pincode": profile_data.pincode
+        }
+        receptionist_table.put_item(Item=receptionist_data)
+        return {"message": "Profile setup successful!", "receptionist_id": receptionist_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save receptionist profile: {str(e)}")   
 @router.get("/search-patient")
 async def search_patient(full_name: str):
     """

@@ -105,15 +105,15 @@ export default function DoctorDashboardPage() {
         </p>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <Card title="Total Patients">{loading && totalPatients === null ? <Skeleton className="h-8 w-16" /> : <p className="kpi-value">{totalPatients ?? "-"}</p>}</Card>
         <Card title="Today Appointments">{loading && !appointmentRows.length ? <Skeleton className="h-8 w-16" /> : <p className="kpi-value">{todayAppointmentsCount}</p>}</Card>
-        <Card title="Current Daily Limit">{loading && dailyLimit === null ? <Skeleton className="h-8 w-16" /> : <p className="kpi-value">{dailyLimit ?? "-"}</p>}</Card>
+        {/* <Card title="Current Daily Limit">{loading && dailyLimit === null ? <Skeleton className="h-8 w-16" /> : <p className="kpi-value">{dailyLimit ?? "-"}</p>}</Card> */}
         <Card title="Care Plans">{loading && !stats ? <Skeleton className="h-8 w-16" /> : <p className="kpi-value">{stats?.metrics.care_plans_generated ?? "-"}</p>}</Card>
-        <Card title="Critical Alerts">{loading && !stats ? <Skeleton className="h-8 w-16" /> : <p className="kpi-value">{stats?.metrics.critical_alerts ?? "-"}</p>}</Card>
+        {/* <Card title="Critical Alerts">{loading && !stats ? <Skeleton className="h-8 w-16" /> : <p className="kpi-value">{stats?.metrics.critical_alerts ?? "-"}</p>}</Card> */}
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid gap-4 xl:grid-cols-1">
         <Card title="Upcoming Appointments (Top 5)" action={<Button loading={loading} onClick={load}>Refresh</Button>}>
           <div className="space-y-2">
             {loading && !todaysAppointments.length &&
@@ -162,40 +162,8 @@ export default function DoctorDashboardPage() {
           </div>
         </Card>
 
-        <Card title="Total Appointments Today (Graph)">
-          <div className="space-y-3">
-            {loading && !stats ? (
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-3 w-full rounded-full" />
-                <Skeleton className="h-4 w-40" />
-              </div>
-            ) : (
-              <div>
-                <div className="mb-1 flex justify-between text-sm">
-                  <span>Booked</span>
-                  <span>{totalBookedByHour}</span>
-                </div>
-                <div className="h-3 rounded-full bg-[#dceff1]">
-                  <div
-                    className="h-3 rounded-full bg-[var(--teal)]"
-                    style={{
-                      width: `${totalLimitByHour ? Math.min(100, (totalBookedByHour / totalLimitByHour) * 100) : 0}%`,
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-            <p className="muted text-sm">Capacity today: {totalBookedByHour}/{dailyLimit ?? totalLimitByHour ?? 0}</p>
-            <div className="flex items-center gap-2">
-              <Button variant="secondary" className="px-2 py-1 text-xs" onClick={() => adjustDailyLimit(-1)}>-</Button>
-              <span className="pill">Adjust Appointment Limit By Day: {dailyLimit ?? "-"}</span>
-              <Button variant="secondary" className="px-2 py-1 text-xs" onClick={() => adjustDailyLimit(1)}>+</Button>
-            </div>
-          </div>
-        </Card>
+       
       </div>
-
       <Card title="Patient Adherence Overview">
         <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
           {loading && !patients.length &&
@@ -216,6 +184,8 @@ export default function DoctorDashboardPage() {
           )}
         </div>
       </Card>
+
+      
     </div>
   );
 }
