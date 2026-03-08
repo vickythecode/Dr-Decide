@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Depends, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel 
 from app.models import UserLogin, UserSignUp, UserConfirm, AppointmentStatus, ChangePasswordRequest
-from app.services.auth import  sign_up_user, login_user, confirm_sign_up, update_password_via_admin, verify_cognito_token
+from app.services.auth import  sign_up_user, login_user, confirm_sign_up, update_password_via_admin, verify_cognito_token, trigger_cognito_resend
 from dotenv import load_dotenv
 security_scheme = HTTPBearer()
 load_dotenv()
@@ -95,3 +95,27 @@ def change_password(
         old_password=request.old_password,
         new_password=request.new_password
     )
+
+
+
+
+from pydantic import BaseModel, EmailStr
+
+class ResendCodeRequest(BaseModel):
+    email: EmailStr
+    
+@auth_router.post("/resend-code")
+async def resend_code(data: ResendCodeRequest):
+    """
+    API Endpoint for users who didn't receive their verification code.
+    Path will be: POST /api/auth/resend-code
+    """
+    print(f"Attempting to resend code for: {data.email}") # Debugging line
+    
+    delivery_details = trigger_cognito_resend(data.email)
+    destination = delivery_details.get('Destination', 'your email')
+    
+    return {
+        "message": f"A new verification code has been sent to {destination}.",
+        "status": "Success"
+    }

@@ -1,24 +1,33 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
 import { useToast } from "@/context/ToastContext";
-import { verifyEmail } from "@/lib/services";
+import { verifyEmail, resendCode } from "@/lib/services";
 
 function VerifyEmailForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { pushToast } = useToast();
   
-  // Grab the email AND the role from the URL 
   const email = searchParams.get("email") || "";
   const role = searchParams.get("role") || "patient";
   
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [timer, setTimer] = useState(0);
+
+  useEffect(() => {
+    let interval;
+    if (timer > 0) {
+      interval = setInterval(() => setTimer((prev) => prev - 1), 1000);
+    }
+    return () => clearInterval(interval);
+  }, [timer]);
 
   async function submit() {
     if (!code || code.length < 6) {
@@ -30,8 +39,6 @@ function VerifyEmailForm() {
     try {
       await verifyEmail(email, code);
       pushToast("Email verified successfully! Please log in.", "success");
-      
-      // Dynamically push to the correct login route
       router.push(`/auth/login/${role}`); 
     } catch (error) {
       pushToast("Invalid or expired verification code. Try again.", "error");
@@ -40,31 +47,69 @@ function VerifyEmailForm() {
     }
   }
 
+  async function handleResend() {
+    if (timer > 0 || resending) return;
+    
+    setResending(true);
+    try {
+      await resendCode(email);
+      pushToast("A new code has been sent to your email.", "success");
+      setTimer(60); // 60-second cooldown to prevent API spam
+    } catch (error) {
+      pushToast("Failed to resend code. Please try again later.", "error");
+    } finally {
+      setResending(false);
+    }
+  }
+
   return (
     <Card title="Verify Your Email">
-      <p className="muted mb-4 text-sm">
-        We sent a 6-digit verification code to <span className="font-semibold text-[var(--foreground)]">{email || "your email address"}</span>. 
-        Please enter it below to activate your account.
-      </p>
+      <div className="text-center mb-6">
+        <p className="text-sm text-gray-500">
+          We sent a 6-digit verification code to:
+        </p>
+        <p className="font-semibold text-gray-900">{email || "your email address"}</p>
+      </div>
       
-      <div className="space-y-4">
+      <div className="space-y-6">
         <Input
           value={code}
           onChange={(e) => setCode(e.target.value)}
-          placeholder="Enter 6-digit code"
+          placeholder="000000"
           maxLength={6}
-          // Added font-mono and custom tracking to make the numbers look like a real auth code
-          className="text-center tracking-[0.5em] font-mono text-lg"
+          className="text-center tracking-[0.5em] font-mono text-2xl py-6"
         />
         
-        <Button loading={loading} onClick={submit} className="w-full">
+        <Button loading={loading} onClick={submit} className="w-full py-3">
           Verify Account
         </Button>
+
+        {/* RESEND SECTION */}
+        <div className="pt-4 border-t border-gray-100 text-center">
+          <p className="text-sm text-gray-600 mb-2">Didn't receive the code?</p>
+          <button 
+            type="button"
+            disabled={timer > 0 || resending}
+            onClick={handleResend}
+            className={`text-sm font-bold transition-colors ${
+              timer > 0 || resending 
+                ? "text-gray-400 cursor-not-allowed" 
+                : "text-blue-600 hover:text-blue-800"
+            }`}
+          >
+            {resending ? (
+              "Sending..."
+            ) : timer > 0 ? (
+              `Resend available in ${timer}s`
+            ) : (
+              "Resend New Code"
+            )}
+          </button>
+        </div>
       </div>
     </Card>
   );
 }
-
 export default function VerifyEmailPage() {
   return (
     <Suspense fallback={

@@ -34,6 +34,13 @@ export async function patientDoctors(params: {
   return data as { total_found?: number; results_found?: number; doctors: DoctorDirectoryItem[] };
 }
 
+
+export async function resendCode(email: string) {
+  const response = await api.post(`/api/auth/resend-code`, {
+    email
+  });
+  return response.data;
+}
 export async function bookAppointment(payload: {
   patient_id: string;
   patient_name: string;
@@ -68,6 +75,7 @@ export async function patientCarePlan() {
     status: string;
   };
 }
+
 
 export async function logTask(payload: { task_id: string; status: string }) {
   const { data } = await api.post("/api/patient/log-task", payload);

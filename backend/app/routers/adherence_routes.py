@@ -86,7 +86,7 @@ async def get_patient_recovery_status(appointment_id: str):
             # Find the specific plan for this appointment, or default to the most recent one
             all_plans = plan_response.get('Items', [])
             plan_item = next((p for p in all_plans if p.get('appointment_id') == appointment_id), None)
-            print(f"DEBUG: Found {len(all_plans)} plans for patient_id {patient_id}, selected plan: {plan_item}")
+         
             if not plan_item and all_plans:
                 plan_item = all_plans[0] # Fallback if appointment_id wasn't saved perfectly
                 

@@ -5,7 +5,7 @@ import boto3
 from botocore.exceptions import ClientError
 from jose import jwk, jwt
 from jose.utils import base64url_decode
-from fastapi import HTTPException, Security, Depends
+from fastapi import HTTPException, Security, Depends,status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 
@@ -185,4 +185,39 @@ def update_password_via_admin(username, old_password, new_password):
         if error_code == 'NotAuthorizedException':
             raise HTTPException(status_code=401, detail="Invalid current password.")
         raise HTTPException(status_code=400, detail=e.response['Error']['Message'])
- 
+import botocore.exceptions
+
+def trigger_cognito_resend(email: str):
+    """
+    Business Logic: Triggers Cognito to send a new verification code.
+    """
+    try:
+        # Use APP_CLIENT_ID which was initialized at the top of your file
+        response = cognito_client.resend_confirmation_code(
+            ClientId=APP_CLIENT_ID,
+            Username=email
+        )
+        return response.get('CodeDeliveryDetails', {})
+
+    except cognito_client.exceptions.UserNotFoundException:
+        # If Cognito throws the 404, it means the email isn't in the User Pool
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail=f"User {email} not found in Cognito."
+        )
+    except cognito_client.exceptions.LimitExceededException:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS, 
+            detail="Resend limit exceeded. Please try again later."
+        )
+    except cognito_client.exceptions.NotAuthorizedException:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="User is already confirmed or access denied."
+        )
+    except Exception as e:
+        print(f"Resend Error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail="An unexpected error occurred."
+        )
