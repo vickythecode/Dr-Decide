@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Depends, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel 
 from app.models import UserLogin, UserSignUp, UserConfirm, AppointmentStatus, ChangePasswordRequest
-from app.services.auth import  sign_up_user, login_user, confirm_sign_up, change_cognito_password, verify_cognito_token
+from app.services.auth import  sign_up_user, login_user, confirm_sign_up, change_cognito_password, update_password_via_admin, verify_cognito_token
 from dotenv import load_dotenv
 security_scheme = HTTPBearer()
 load_dotenv()
@@ -68,31 +68,30 @@ async def update_appointment_status(appointment_id: str, request: UpdateStatusRe
         print(f"DynamoDB Update Error: {e}")
         raise HTTPException(status_code=500, detail="Failed to update appointment status.")
 
+
 @auth_router.post("/change-password")
 def change_password(
     request: ChangePasswordRequest,
-    claims: dict = Depends(verify_cognito_token), # 1. Validates the JWT cryptographically
-    credentials: HTTPAuthorizationCredentials = Security(security_scheme) # 2. Grabs the raw string
+    claims: dict = Depends(verify_cognito_token)
 ):
-    """Securely updates a logged-in user's password."""
-    
-    # 3. AWS Cognito STRICTLY requires an Access Token for this, not an ID Token.
-    # Your verifier allows both, so we must double-check here:
-    if claims.get('token_use') != 'access':
+    """
+    Handles password change via ID Token identification.
+    """
+    # 1. Double check we are using an ID Token (as requested)
+    if claims.get('token_use') != 'id':
         raise HTTPException(
             status_code=400, 
-            detail="You must provide an Access Token to change a password, but an ID Token was provided."
+            detail="ID Token required for this request."
         )
 
-    # 4. Extract the raw string from the credentials object
-    raw_access_token = credentials.credentials
+    # 2. Extract the username from the token claims
+    # Cognito ID Tokens use 'cognito:username' or 'sub'
+    username = claims.get('cognito:username') or claims.get('sub')
 
-    # 5. Send it to AWS Cognito via your auth.py file
-    change_cognito_password(
-        access_token=raw_access_token,
+    # 3. Call the admin-level update function
+    # Note: No need for a try/except here if the helper already raises HTTPException
+    return update_password_via_admin(
+        username=username,
         old_password=request.old_password,
         new_password=request.new_password
     )
-    
-    return {"message": "Password updated successfully!"}
-    

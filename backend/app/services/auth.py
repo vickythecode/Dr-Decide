@@ -104,6 +104,7 @@ def verify_cognito_token(credentials: HTTPAuthorizationCredentials = Security(se
         raise HTTPException(status_code=500, detail="Cognito keys were not loaded properly on server startup.")
 
     token = credentials.credentials
+    print(f"Received token for verification: {token[:30]}...")  # Log the beginning of the token for debugging
     
     try:
         headers = jwt.get_unverified_headers(token)
@@ -117,7 +118,6 @@ def verify_cognito_token(credentials: HTTPAuthorizationCredentials = Security(se
         public_key = jwk.construct(keys[key_index])
         message, encoded_signature = str(token).rsplit('.', 1)
         decoded_signature = base64url_decode(encoded_signature.encode('utf-8'))
-
         if not public_key.verify(message.encode("utf8"), decoded_signature):
             raise HTTPException(status_code=401, detail="Signature verification failed")
 
@@ -127,8 +127,8 @@ def verify_cognito_token(credentials: HTTPAuthorizationCredentials = Security(se
         verified_audience = claims.get('client_id') or claims.get('aud')
         if verified_audience != APP_CLIENT_ID:
             raise HTTPException(status_code=401, detail="Token was not issued for this audience")
-
-        return claims
+        print(f"Token successfully verified. Claims: {claims}")    
+        return claims 
 
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Invalid authentication credentials: {str(e)}")
@@ -163,3 +163,30 @@ def confirm_sign_up(email: str, code: str):
         print(f"AWS Verification Error: {e}")
         # We raise the HTTP exception here so the router can just catch it seamlessly
         raise HTTPException(status_code=400, detail="Invalid or expired verification code.")
+def update_password_via_admin(username, old_password, new_password):
+    try:
+        # This call will now succeed because of the change you made in the screenshot
+        cognito_client.admin_initiate_auth(
+            UserPoolId=USER_POOL_ID,
+            ClientId=APP_CLIENT_ID,
+            AuthFlow='ADMIN_NO_SRP_AUTH',
+            AuthParameters={
+                'USERNAME': username,
+                'PASSWORD': old_password,
+            }
+        )
+
+        cognito_client.admin_set_user_password(
+            UserPoolId=USER_POOL_ID,
+            Username=username,
+            Password=new_password,
+            Permanent=True
+        )
+        return {"message": "Password updated successfully!"}
+
+    except ClientError as e:
+        error_code = e.response['Error']['Code']
+        if error_code == 'NotAuthorizedException':
+            raise HTTPException(status_code=401, detail="Invalid current password.")
+        raise HTTPException(status_code=400, detail=e.response['Error']['Message'])
+ 
