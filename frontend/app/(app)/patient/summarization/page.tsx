@@ -56,7 +56,7 @@ export default function PatientSummarizationPage() {
       }
       setBlocks(nextBlocks);
     } catch {
-      pushToast("Failed to load summarization", "error");
+      pushToast("No summarization", "info");
     } finally {
       setLoading(false);
     }
