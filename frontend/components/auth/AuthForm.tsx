@@ -15,6 +15,22 @@ import { api } from "@/lib/api";
 
 type Mode = "login" | "signup";
 
+const PASSWORD_REQUIREMENTS = {
+  uppercase: /[A-Z]/,
+  lowercase: /[a-z]/,
+  number: /\d/,
+  special: /[^A-Za-z0-9]/,
+};
+
+function getPasswordErrors(password: string): string[] {
+  const errors: string[] = [];
+  if (!PASSWORD_REQUIREMENTS.uppercase.test(password)) errors.push("one uppercase letter");
+  if (!PASSWORD_REQUIREMENTS.lowercase.test(password)) errors.push("one lowercase letter");
+  if (!PASSWORD_REQUIREMENTS.number.test(password)) errors.push("one number");
+  if (!PASSWORD_REQUIREMENTS.special.test(password)) errors.push("one special character");
+  return errors;
+}
+
 // --- JWT HELPERS ---
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   try {
@@ -102,12 +118,22 @@ export default function AuthForm({ mode, fixedRole }: { mode: Mode; fixedRole?: 
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false); // Toggle state added
+  const [passwordTouched, setPasswordTouched] = useState(false);
   
   const roleOptions: Role[] =
     mode === "signup" ? (["Patient", "Doctor"] as Role[]) : (["Patient", "Doctor", "Receptionist"] as Role[]);
+  const passwordErrors = getPasswordErrors(password);
+  const showPasswordError = passwordTouched && password.length > 0 && passwordErrors.length > 0;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setPasswordTouched(true);
+
+    if (passwordErrors.length > 0) {
+      pushToast("Password must include uppercase, lowercase, number, and special character.", "error");
+      return;
+    }
+
     setLoading(true);
     try {
       if (mode === "signup") {
@@ -187,7 +213,10 @@ export default function AuthForm({ mode, fixedRole }: { mode: Mode; fixedRole?: 
           <Input 
             type={showPassword ? "text" : "password"} 
             value={password} 
-            onChange={(e) => setPassword(e.target.value)} 
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setPasswordTouched(true);
+            }}
             placeholder="Enter password" 
             required 
             className="pr-10" // Optional: gives space for the icon so text doesn't overlap
@@ -213,8 +242,13 @@ export default function AuthForm({ mode, fixedRole }: { mode: Mode; fixedRole?: 
             )}
           </button>
         </div>
+        {showPasswordError && (
+          <p className="text-sm text-red-500">
+            Password must contain {passwordErrors.join(", ")}.
+          </p>
+        )}
 
-        <Button loading={loading} className="w-full" type="submit">
+        <Button loading={loading} className="w-full" type="submit" disabled={password.length > 0 && passwordErrors.length > 0}>
           {mode === "login" ? "Login" : "Create Account"}
         </Button>
       </form>
